@@ -1,0 +1,108 @@
+cubes:
+  - name: applications
+    sql_table: "DEV_DB.DEV_ANWAR.DIM_APPLICATIONS"
+    public: false
+
+    dimensions:
+      - name: application_id
+        sql: "{CUBE}.application_id"
+        type: string
+        primary_key: true
+        title: Application ID
+        description: Unique identifier for the application
+
+      - name: application_created_at
+        sql: "{CUBE}.application_created_at"
+        type: time
+        title: Application Created Date
+        description: Date and time when the application was created
+
+      - name: application_started_at
+        sql: "{CUBE}.application_started_at"
+        type: time
+        title: Application Started Date
+        description: Date and time when the application was started
+
+      - name: application_completed_at
+        sql: "{CUBE}.application_completed_at"
+        type: time
+        title: Application Completed Date
+        description: Date and time when the application was completed
+
+      - name: business_type
+        sql: "{CUBE}.business_type"
+        type: string
+        title: Business Type
+        description: Type of business entity (Corporation, LLC, Sole Proprietorship, Partnership)
+
+      - name: b2b_services_flag
+        sql: "{CUBE}.b2b_services_flag"
+        type: string
+        title: B2B Services Flag
+        description: Custom logic to to parse industry categories into B2B vs. non-B2B (i.e. product sellers, B2C companies)
+
+      - name: business_name
+        sql: "{CUBE}.business_name"
+        type: string
+        title: Business Name
+        description: Name of the business/company
+
+      - name: business_industry_category
+        sql: "{CUBE}.business_industry_category"
+        type: string
+        title: Business Industry Category
+        description: Industry category of the business
+
+      - name: business_establishment_date
+        sql: "{CUBE}.business_establishment_date"
+        type: time
+        title: Business Establishment Date
+        description: Date when the business was established
+
+      - name: acquisition_channel
+        sql: "{CUBE}.application_channel_derived"
+        type: string
+        title: Acquisition Channel
+        description: The UTM source type of an account, based on a last-touch attribution model.
+
+      - name: is_auto_approved
+        sql: "{CUBE}.is_auto_approved"
+        type: boolean
+        title: Is Auto Approved
+        description: Whether the application was automatically approved
+
+      - name: is_auto_denied
+        sql: "{CUBE}.is_auto_denied"
+        type: boolean
+        title: Is Auto Denied
+        description: Whether the application was automatically denied
+
+      - name: is_straight_through
+        sql: "{CUBE}.is_straight_through"
+        type: boolean
+        title: Is Straight Through
+        description: Whether the application went through straight-through processing
+
+      - name: application_status
+        sql: "{CUBE}.application_status"
+        type: string
+        title: Application Status
+        description: Current status of the application
+
+      - name: current_step
+        sql: "{CUBE}.current_step"
+        type: string
+        title: Current Step
+        description: Current step in the application process
+
+      - name: application_decision
+        sql: "{CUBE}.application_decision"
+        type: string
+        title: Application Decision
+        description: Final decision for the application (one of Auto Approved, Auto Denied, Straight Through, Manual Approved, Manual Denied, Incomplete, Abandoned, or Unmapped)
+
+    measures:
+      # Measures can be added here
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here

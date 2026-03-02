@@ -1,0 +1,28 @@
+views:
+  - name: vw_mca_revenue
+    
+    cubes:
+
+      - join_path: mca_revenue
+        prefix: false
+        includes:
+          # dimensions
+          - snap_date
+          # measures
+          - mca_factor_fee_revenue
+          - mca_late_fee_revenue
+          - mca_charge_off_loss_guco
+          - mca_principal_recovery
+          - mca_factor_fee_recovery
+          - mca_total_recovery
+
+      - join_path: mca_revenue.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

@@ -1,0 +1,24 @@
+views:
+  - name: vw_invoice_activity
+    
+    cubes:
+
+      - join_path: invoice_activity
+        prefix: false
+        includes:
+          # dimensions
+          - invoice_created_at
+          # measures
+          - invoice_attach
+          - invoice_active
+
+      - join_path: invoice_activity.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

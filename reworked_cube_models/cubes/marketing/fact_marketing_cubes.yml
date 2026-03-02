@@ -1,0 +1,209 @@
+cubes:
+  - name: fact_ad_spend
+    sql_table: "METABASE_DB.MART_MARKETING.FACT_AD_SPEND"
+    public: false
+    description: >
+      MART_MARKETING — One row per day per platform per campaign.
+      Platform-normalized ad spend data unioned from Google, Facebook, and Microsoft.
+      IMPORTANT: This table requires INT_AD_SPEND_NORMALIZED upstream in dbt
+      to union 3 incompatible platform schemas (Google: 22 tables, Facebook: 16 tables,
+      Microsoft: 22 tables) into a consistent column contract before Gold promotion.
+
+    dimensions:
+      - name: ad_spend_id
+        sql: "{CUBE}.AD_SPEND_ID"
+        type: string
+        primary_key: true
+        title: Ad Spend Record ID
+        description: Surrogate key (hash of date + platform + campaign).
+
+      - name: report_date
+        sql: "{CUBE}.REPORT_DATE"
+        type: time
+        title: Day
+        description: Date of the ad spend report. Rolls up to week or month for standard reporting.
+
+      - name: platform
+        sql: "{CUBE}.PLATFORM"
+        type: string
+        title: Ad Platform
+        description: "google, facebook, or microsoft."
+
+      - name: channel_type
+        sql: "{CUBE}.CHANNEL_TYPE"
+        type: string
+        title: Channel Type
+        description: "paid_search, paid_social, display."
+
+      - name: campaign_name
+        sql: "{CUBE}.CAMPAIGN_NAME"
+        type: string
+        title: Campaign Name
+        description: Campaign name as reported by the ad platform.
+
+    measures:
+      - name: spend
+        sql: "{CUBE}.TOTAL_DOLLAR_COST"
+        type: sum
+        title: Daily Spend ($)
+        description: >
+          Total paid advertising spend for the period, inclusive of brand awareness,
+          direct response, and top-of-funnel campaigns.
+
+      - name: impressions
+        sql: "{CUBE}.TOTAL_IMPRESSIONS"
+        type: sum
+        title: Impressions (#)
+        description: Number of times an ad was displayed on a user's screen.
+
+      - name: traffic
+        sql: "{CUBE}.TOTAL_TRAFFIC"
+        type: sum
+        title: Traffic (#)
+        description: Number of users who visited the Novo website or landing page.
+
+      - name: clicks
+        sql: "{CUBE}.TOTAL_CLICK"
+        type: sum
+        title: Clicks (#)
+        description: Number of clicks on a CTA (e.g., 'Get Started' on the Novo homepage).
+
+
+  - name: fact_acquisition_cost
+    sql_table: "METABASE_DB.MART_MARKETING.FACT_ACQUISITION_COST"
+    public: false
+    description: >
+      MART_MARKETING — One row per application. Attributed customer acquisition cost metrics.
+      Source: PROD_DB.DATA.GTM_ACQUISITION_BUSINESS_COST.
+
+    joins:
+      - name: dim_applications
+        sql: "{CUBE}.APPLICATION_ID = {dim_applications}.APPLICATION_ID"
+        relationship: many_to_one
+
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: application_id
+        sql: "{CUBE}.APPLICATION_ID"
+        type: string
+        primary_key: true
+        title: Application ID
+        description: FK to CONFORMED.DIM_APPLICATIONS.
+
+    measures:
+      - name: cost_per_started_application
+        sql: "{CUBE}.COST_PER_STARTED_APPLICATION"
+        type: sum
+        title: Cost Per Started Application (CPSA) ($)
+        description: Attributed ad spend per started application from paid channels.
+
+      - name: cost_per_opened_account
+        sql: "{CUBE}.COST_PER_OPENED_ACCOUNT"
+        type: sum
+        title: Cost Per Opened Account (CPOA) ($)
+        description: Attributed ad spend per successfully opened account from paid channels.
+
+      - name: contribution_ltv_m3
+        sql: "{CUBE}.CONTRIBUTION_LTV_M3"
+        type: sum
+        title: Acquisition Net Present Value — ANPV ($)
+        description: >
+          Net present value of future cashflows for the lifetime of a Novo account
+          calculated with >= 90 days of historical data using the M3 LTV model.
+
+
+  - name: fact_application_events
+    sql_table: "METABASE_DB.MART_MARKETING.FACT_APPLICATION_EVENTS"
+    public: false
+    description: >
+      MART_MARKETING — Onboarding funnel milestones. One row per application.
+      Source: METABASE_DB.ONBOARDING.APPLICATIONS + PROD_DB.DATA.GTM_ACQUISITION_FUNNEL.
+
+    joins:
+      - name: dim_applications
+        sql: "{CUBE}.APPLICATION_ID = {dim_applications}.APPLICATION_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: application_id
+        sql: "{CUBE}.APPLICATION_ID"
+        type: string
+        primary_key: true
+        title: Application ID
+        description: FK to CONFORMED.DIM_APPLICATIONS.
+
+      - name: application_started_at
+        sql: "{CUBE}.APPLICATION_STARTED_AT"
+        type: time
+        title: Application Started At
+        description: Timestamp when Step 1 (email + password) was submitted.
+
+      - name: application_completed_at
+        sql: "{CUBE}.APPLICATION_COMPLETED_AT"
+        type: time
+        title: Application Completed At
+        description: Timestamp when all required steps and e-signature were completed.
+
+    measures:
+      - name: applications_started
+        sql: "CASE WHEN {CUBE}.APPLICATION_STARTED_AT IS NOT NULL THEN {CUBE}.APPLICATION_ID END"
+        type: count_distinct
+        title: Started Applications (#)
+        description: Count of applications where Step 1 (email + password) was completed.
+
+      - name: applications_completed
+        sql: "CASE WHEN {CUBE}.APPLICATION_COMPLETED_AT IS NOT NULL THEN {CUBE}.APPLICATION_ID END"
+        type: count_distinct
+        title: Completed Applications (#)
+        description: Count of applications where all steps were completed and e-signed.
+
+
+  - name: fact_ltv_contribution
+    sql_table: "METABASE_DB.MART_MARKETING.FACT_LTV_CONTRIBUTION"
+    public: false
+    description: >
+      MART_MARKETING — LTV model output per business per LTV type.
+      Source: DEV_DB.DEV_ANWAR.FACT_LTV_COMPONENTS_MONTHLY → promote to METABASE_DB.
+      Used for 18M_ANPV calculation and cohort-level LTV analysis.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+      - name: dim_applications
+        sql: "{CUBE}.APPLICATION_ID = {dim_applications}.APPLICATION_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: ltv_type
+        sql: "{CUBE}.LTV_TYPE"
+        type: string
+        title: LTV Type
+        description: "M1 (1-month forward) or M3 (3-month forward) LTV model."
+
+      - name: month_on_books
+        sql: "{CUBE}.MONTH_ON_BOOKS"
+        type: number
+        title: Month on Books
+        description: Number of months since account was opened at time of this LTV record.
+
+    measures:
+      - name: ltv_18m_m3
+        sql: "{CUBE}.CONTRIBUTION"
+        type: sum
+        title: 18M ANPV ($)
+        description: >
+          Standard ANPV calculation truncated to the first 18 statements.
+          Filter: MONTH_ON_BOOKS < 18 applied in the view layer.
+          Source: PROD_DB.MODELS.MONTHLY_LTV_COMPONENTS_M3.

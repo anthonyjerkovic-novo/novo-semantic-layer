@@ -1,0 +1,40 @@
+cubes:
+  - name: credit_card_rewards
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_CREDIT_CARD_REWARDS"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: external_transaction_id
+        sql: "{CUBE}.external_transaction_id"
+        type: string
+        primary_key: true
+        title: External Transaction ID
+        description: Unique identifier for the external transaction
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: created_at
+        sql: "{CUBE}.created_at"
+        type: time
+        title: Created At
+        description: Date and time when the reward was created
+
+    measures:
+      - name: credit_card_rewards_accrued
+        sql: "{CUBE}.rewards_accrued"
+        type: sum
+        title: Credit Card Rewards Accrued ($)
+        description: Amount in USD accrued on a customer's credit card account, as an expense.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started 

@@ -1,0 +1,139 @@
+views:
+  - name: v_marketing
+    description: >
+      PUBLIC VIEW — Marketing Acquisition & LTV Metrics.
+      Use this view for acquisition funnel analysis, paid advertising performance,
+      CAC efficiency (CPSA / CPOA), and customer lifetime value.
+      All spend data is platform-normalized via INT_AD_SPEND_NORMALIZED across
+      Google, Facebook, and Microsoft ad platforms.
+
+    cubes:
+      - join_path: dim_applications
+        prefix: false
+        includes:
+          - application_id
+          - application_created_at
+          - application_started_at
+          - application_completed_at
+          - application_decision
+          - application_channel_derived
+          - business_type
+          - business_industry_category
+
+      - join_path: fact_ad_spend
+        prefix: false
+        includes:
+          - report_date
+          - platform
+          - channel_type
+          - campaign_name
+          - spend
+          - impressions
+          - traffic
+          - clicks
+
+      - join_path: fact_acquisition_cost
+        prefix: false
+        includes:
+          - cost_per_started_application
+          - cost_per_opened_account
+          - contribution_ltv_m3
+
+      - join_path: fact_application_events
+        prefix: false
+        includes:
+          - application_started_at
+          - application_completed_at
+          - applications_started
+          - applications_completed
+
+      - join_path: fact_ltv_contribution
+        prefix: false
+        includes:
+          - ltv_type
+          - month_on_books
+          - ltv_18m_m3
+
+
+  - name: v_credit_risk_mca
+    description: >
+      PUBLIC VIEW — MCA Credit Risk & Portfolio Metrics.
+      Use this view for MCA delinquency analysis, portfolio exposure, charge-off tracking,
+      and vintage performance. Cohorted by month account was underwritten (Open Cohort).
+      IMPORTANT: Underlying FACT_MCA_LOAN_TAPE requires INT_MCA_LOAN_TAPE_RECONCILED
+      pre-processing step to resolve Aurora/LMS source conflicts before this view is reliable.
+
+    cubes:
+      - join_path: dim_businesses
+        prefix: false
+        includes:
+          - business_id
+          - account_opened_month
+          - customer_success_account_status
+
+      - join_path: dim_applications
+        prefix: false
+        includes:
+          - business_type
+          - business_industry_category
+
+      - join_path: fact_mca_loan_tape
+        prefix: false
+        includes:
+          - snap_date
+          - delinquency_bin
+          - outstanding_balance_mca
+          - credit_limit_mca
+          - charge_off_loss_mca
+
+      - join_path: fact_mca_revenue
+        prefix: false
+        includes:
+          - reporting_month
+          - factor_fee_revenue
+          - late_fee_revenue
+          - recovery_mca
+
+      - join_path: fact_mca_transactions
+        prefix: false
+        includes:
+          - transaction_at
+          - transaction_type
+          - mca_attach
+          - mca_active
+          - payments_made_mca
+
+
+  - name: v_credit_risk_cc
+    description: >
+      PUBLIC VIEW — Credit Card Risk & Portfolio Metrics.
+      Use this view for CC delinquency, utilization, charge-off, revolve status,
+      and card funnel analysis (invite → apply → approve). Cohorted by first statement date.
+      NOTE: Outstanding balance, exposure, utilization, and total spend are newly added
+      measures not present in the legacy Cube implementation.
+
+    cubes:
+      - join_path: dim_businesses
+        prefix: false
+        includes:
+          - business_id
+          - account_opened_month
+          - customer_success_account_status
+
+      - join_path: dim_applications
+        prefix: false
+        includes:
+          - business_type
+          - business_industry_category
+
+      - join_path: fact_credit_card_transactions
+        prefix: false
+        includes:
+          - transaction_date
+          - transaction_status
+          - result
+          - sardine_transaction_risk_level
+          - cc_total_spend
+          - cc_outstanding_balance
+          - cc_utilization
+          - cc_transaction_count

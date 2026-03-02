@@ -1,0 +1,16 @@
+views:
+  - name: vw_lithic_settlement_daily
+    
+    cubes:
+
+      - join_path: lithic_settlement_daily
+        prefix: false
+        includes:
+          # dimensions
+          - report_date
+          # measures
+          - interchange_eligible_spend_cc
+          - interchange_revenue_cc
+          - interchange_eligible_spend_dc
+          - interchange_revenue_dc
+          - interchange_revenue_total

@@ -1,0 +1,88 @@
+cubes:
+  - name: zendesk_tickets
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_ZENDESK_TICKETS"
+    public: true
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: ticket_id
+        sql: "{CUBE}.ticket_id"
+        type: string
+        primary_key: true
+        title: Ticket ID
+        description: Unique identifier for the Zendesk ticket
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: ticket_created_at
+        sql: "{CUBE}.ticket_created_at"
+        type: time
+        title: Ticket Created At
+        description: Date and time when the ticket was created
+
+      - name: created_channel
+        sql: "{CUBE}.created_channel"
+        type: string
+        title: Contact Channel
+        description: The method by which a business/individual has contacted Novo
+
+    measures:
+      - name: contact_volume
+        sql: "CASE WHEN {CUBE}.created_channel != 'side_conversation' THEN {CUBE}.ticket_id END"
+        type: count
+        title: Contact Volume (#)
+        description: Number of contact attempts made by customers, excluding side conversations.
+
+      - name: csat_positive_count
+        sql: "CASE WHEN LOWER({CUBE}.ticket_satisfaction_score) = 'good' THEN {CUBE}.ticket_id END"
+        type: count
+        title: CSAT Positive Count (#)
+        description: Number of tickets where the customer satisfaction score is 'good'.
+
+      - name: csat_response_count
+        sql: "CASE WHEN {CUBE}.ticket_satisfaction_score IS NOT NULL THEN {CUBE}.ticket_id END"
+        type: count
+        title: CSAT Response Count (#)
+        description: Number of tickets where the customer satisfaction score is not null.
+
+      - name: csat_score
+        sql: "1.0 * {csat_positive_count} / NULLIF({csat_response_count}, 0)"
+        type: number
+        title: CSAT Score
+        description: Average Customer Satisfaction Score
+
+      - name: time_to_first_reply_calendar_hours
+        sql: "{CUBE}.time_to_first_reply_calendar_minutes / 60.0"
+        type: avg
+        title: Time to First Reply (Calendar Hours)
+        description: Average hours between first contact attempt and first reply from Customer Success (calendar time)
+
+      - name: time_to_first_reply_business_hours
+        sql: "{CUBE}.time_to_first_reply_business_minutes / 60.0"
+        type: avg
+        title: Time to First Reply (Business Hours)
+        description: Average hours between first contact attempt and first reply from Customer Success (business time)
+
+      - name: time_to_final_resolution_calendar_hours
+        sql: "{CUBE}.time_to_final_resolution_calendar_minutes / 60.0"
+        type: avg
+        title: Time to Final Resolution (Calendar Hours)
+        description: Average hours between first contact attempt and full resolution (calendar time)
+
+      - name: time_to_final_resolution_business_hours
+        sql: "{CUBE}.time_to_final_resolution_business_minutes / 60.0"
+        type: avg
+        title: Time to Final Resolution (Business Hours)
+        description: Average hours between first contact attempt and full resolution (business time)
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

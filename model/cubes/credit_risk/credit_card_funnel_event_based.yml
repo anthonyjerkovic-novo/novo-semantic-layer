@@ -1,0 +1,96 @@
+cubes:
+  - name: credit_card_funnel_event_based
+    sql: >
+      WITH dataset AS (
+          SELECT
+              invitation_created_at AS stage_timestamp
+              , business_id
+              , 'INVITE_SENT' AS stage_name
+              , NULL AS particulars
+          FROM
+              DEV_DB.DEV_ANWAR.DIM_CREDIT_CARD_APPLICATION_FUNNEL
+          
+          UNION ALL
+          
+          SELECT
+              application_submitted_at AS stage_timestamp
+              , business_id
+              , 'APPLICATION_SUBMITTED' AS stage_name
+              , NULL AS particulars
+          FROM
+              DEV_DB.DEV_ANWAR.DIM_CREDIT_CARD_APPLICATION_FUNNEL
+          WHERE
+              application_submitted_at IS NOT NULL
+          
+          UNION ALL
+          
+          SELECT
+              decision_created_at AS stage_timestamp
+              , business_id
+              , 'DECISION_CREATED' AS stage_name
+              , decision AS particulars
+          FROM
+              DEV_DB.DEV_ANWAR.DIM_CREDIT_CARD_APPLICATION_FUNNEL
+          WHERE
+              decision_created_at IS NOT NULL
+
+          ORDER BY
+              stage_timestamp
+      )
+      SELECT * FROM dataset
+
+    public: true
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: stage_timestamp
+        sql: "{CUBE}.stage_timestamp"
+        type: time
+        title: Stage Timestamp
+        description: Timestamp when the credit card application stage occurred
+
+      - name: stage_name
+        sql: "{CUBE}.stage_name"
+        type: string
+        title: Stage Name
+        description: Name of the credit card application stage
+
+    measures:
+      - name: invitations_sent
+        sql: "CASE WHEN {CUBE}.stage_name = 'INVITE_SENT' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Invitations Sent (#)
+        description: Count of credit card invitations sent in the given time period
+
+      - name: applications_submitted
+        sql: "CASE WHEN {CUBE}.stage_name = 'APPLICATION_SUBMITTED' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Applications Submitted (#)
+        description: Count of credit card applications submitted in the given time period
+
+      - name: applications_approved
+        sql: "CASE WHEN {CUBE}.stage_name = 'DECISION_CREATED' AND {CUBE}.particulars = 'APPROVED' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Applications Approved (#)
+        description: Count of credit card applications approved in the given time period
+
+      - name: applications_denied
+        sql: "CASE WHEN {CUBE}.stage_name = 'DECISION_CREATED' AND {CUBE}.particulars = 'DENIED' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Applications Denied (#)
+        description: Count of credit card applications denied in the given time period
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

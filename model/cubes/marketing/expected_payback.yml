@@ -1,0 +1,55 @@
+cubes:
+  - name: expected_payback
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_EXPECTED_PAYBACK"
+    public: false
+
+    joins:
+      - name: applications
+        sql: "{CUBE}.application_id = {applications}.application_id"
+        relationship: one_to_one
+
+    dimensions:
+      - name: application_id
+        sql: "{CUBE}.application_id"
+        type: string
+        primary_key: true
+        title: Application ID
+        description: Unique identifier for the application
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: nip_score
+        sql: "{CUBE}.nip_score"
+        type: number
+        title: NIP Score
+        description: Unknown
+
+      # dimensions from applications cube
+      - name: acquisition_channel
+        sql: "{applications.acquisition_channel}"
+        type: string
+
+      - name: application_decision
+        sql: "{applications.application_decision}"
+        type: string
+
+    measures:
+      # - name: e90d_net_income
+      #   sql: "{CUBE}.e90d_net_income"
+      #   type: sum
+      #   title: E90D Net Income ($)
+      #   description: Actual net income in USD over 90 days used as a proxy to assign that same expected value to new accounts with equivalent lead scores.
+
+      - name: e18m_net_income
+        sql: "{CUBE}.e18m_net_income"
+        type: sum
+        title: E18M Net Income ($)
+        description: Actual net income in USD over 18 months used as a proxy to assign that same expected value to new accounts with equivalent lead scores.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

@@ -1,0 +1,60 @@
+cubes:
+  - name: funding_credit_risk
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_LOAN_TAPE_HISTORY"
+    public: true
+
+    dimensions:
+
+      - name: loan_tape_id
+        sql: "{CUBE}.loan_tape_id"
+        type: string
+        primary_key: true
+        title: Loan Tape ID
+        description: Unique identifier for the loan tape
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: snap_date
+        sql: "{CUBE}.snap_date"
+        type: time
+        title: Snap Date
+        description: Date of the MCA snapshot
+
+      - name: open_cohort_mca
+        sql: "CASE WHEN {CUBE}.is_offer_accepted = TRUE THEN {CUBE}.lending_business_created_at END"
+        type: time
+        title: Open Cohort (MCA)
+        description: The month a customer was originally underwritten (i.e. approved for an MCA)
+
+      - name: delinquency_bin_mca
+        sql: "{CUBE}.delinquency_bin"
+        type: string
+        title: Delinquency Bin (MCA)
+        description: Bucketed range of days describing the severity of deliquency of a given account. Other than 0 days delinquent, always grouped in 30 day increments.
+
+    measures:
+      - name: outstanding_balance_mca
+        sql: "{CUBE}.principal_balance_outstanding"
+        type: sum
+        title: Outstanding Balance (MCA) ($)
+        description: Total outstanding balance in USD currently owed on Funding accounts.
+
+      - name: current_credit_limit_mca
+        sql: "{CUBE}.credit_limit"
+        type: sum
+        title: Exposure (Current MCA Credit Limit) ($)
+        description: Highest amount possible to draw down (exposure) in USD.
+
+      - name: payments_made_mca
+        sql: "{CUBE}.payment_made"
+        type: sum
+        title: Payments Made (MCA) ($)
+        description: Amount in USD paid paid to MCA (under a standard/BAU payment plan).
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

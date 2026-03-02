@@ -1,0 +1,52 @@
+cubes:
+  - name: invoice_activity
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_INVOICE_ACTIVITY"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: invoice_id
+        sql: "{CUBE}.invoice_id"
+        type: string
+        primary_key: true
+        title: Invoice ID
+        description: Unique identifier for the invoice
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: invoice_created_at
+        sql: "{CUBE}.invoice_created_at"
+        type: time
+        title: Invoice Created At
+        description: Timestamp when the invoice was created
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.business_specific_ordinal"
+        type: number
+        title: Business Specific Ordinal
+        description: Sequential number of invoices for each business
+
+    measures:
+      - name: invoice_attach
+        sql: "CASE WHEN {CUBE}.business_specific_ordinal = 1 THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Invoice Attach (#)
+        description: Count of distinct businesses that created their first invoice in a given time period.
+
+      - name: invoice_active
+        sql: "{CUBE}.business_id"
+        type: count_distinct
+        title: Invoice Active (#)
+        description: Count of distinct businesses that created any invoice in a given time period.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

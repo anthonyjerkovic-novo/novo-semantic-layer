@@ -1,0 +1,14 @@
+views:
+  - name: vw_gtm_acquisition_cost
+    
+    cubes:
+
+      - join_path: gtm_acquisition_cost
+        prefix: false
+        includes:
+          # dimensions
+          - acquisition_channel
+          - application_decision
+          # measures
+          - cost_per_started_application
+          - cost_per_opened_account

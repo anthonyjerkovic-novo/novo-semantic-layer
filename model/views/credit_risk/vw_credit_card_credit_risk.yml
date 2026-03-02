@@ -1,0 +1,17 @@
+views:
+  - name: vw_credit_card_credit_risk
+    
+    cubes:
+
+      - join_path: credit_card_credit_risk
+        prefix: false
+        includes:
+          # dimensions
+          - statement_date
+          - credit_risk_bin_cc
+          - account_approval_date_cc
+          - line_assignment_segment_cc
+          - delinquency_bin_cc
+          - revolve_status_cc
+          # measures
+          - payments_made_cc

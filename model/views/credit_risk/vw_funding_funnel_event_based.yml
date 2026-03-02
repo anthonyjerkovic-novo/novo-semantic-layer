@@ -1,0 +1,13 @@
+views:
+  - name: vw_funding_funnel_event_based
+    
+    cubes:
+
+      - join_path: funding_funnel_event_based
+        prefix: false
+        includes:
+          # dimensions
+          - stage_timestamp
+          # measures
+          - invitations_sent_mca
+          - offers_accepted_mca

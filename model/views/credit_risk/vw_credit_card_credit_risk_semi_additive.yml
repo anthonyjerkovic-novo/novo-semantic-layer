@@ -1,0 +1,20 @@
+views:
+  - name: vw_credit_card_credit_risk_semi_additive
+    
+    cubes:
+
+      - join_path: credit_card_credit_risk_semi_additive
+        prefix: false
+        includes:
+          # dimensions
+          - period_type
+          - statement_date
+          - credit_risk_bin_cc
+          - account_approval_date_cc
+          - line_assignment_segment_cc
+          - delinquency_bin_cc
+          - revolve_status_cc
+          # measures
+          - outstanding_balance_cc
+          - current_credit_limit_cc
+          - utilization_cc

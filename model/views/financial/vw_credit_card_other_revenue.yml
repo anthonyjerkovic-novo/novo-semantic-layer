@@ -1,0 +1,23 @@
+views:
+  - name: vw_credit_card_other_revenue
+    
+    cubes:
+
+      - join_path: credit_card_other_revenue
+        prefix: false
+        includes:
+          # dimensions
+          - created_at
+          # measures
+          - credit_card_other_fee_revenue
+
+      - join_path: credit_card_other_revenue.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

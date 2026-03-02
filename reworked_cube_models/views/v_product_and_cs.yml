@@ -1,0 +1,132 @@
+views:
+  - name: v_product_adoption
+    description: >
+      PUBLIC VIEW — Product Adoption & Feature Activity Metrics.
+      Use this view for product attachment analysis, feature activation sequencing,
+      first 90-day customer milestones, and monthly active user tracking per product feature.
+      Covers: Debit Card, Credit Card, MCA, Express ACH, Invoices, Reserves,
+      Bookkeeping, Integrations, and Boosts.
+
+    cubes:
+      - join_path: dim_businesses
+        prefix: false
+        includes:
+          - business_id
+          - account_opened_month
+          - last_transaction_at
+
+      - join_path: dim_applications
+        prefix: false
+        includes:
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - business_establishment_date
+
+      - join_path: fact_activation_milestones
+        prefix: false
+        includes:
+          - debit_card_attached_at
+          - credit_card_attached_at
+          - mca_attached_at
+          - express_ach_attached_at
+          - invoice_attached_at
+          - reserves_attached_at
+          - bookkeeping_attached_at
+          - integration_attached_at
+          - is_f90d
+
+      - join_path: fact_invoice_activity
+        prefix: false
+        includes:
+          - invoice_created_at
+          - invoice_attach
+          - invoice_active
+
+      - join_path: fact_bookkeeping_activity
+        prefix: false
+        includes:
+          - bookkeeping_transaction_at
+          - bookkeeping_attach
+          - bookkeeping_active
+
+      - join_path: fact_integration_connections
+        prefix: false
+        includes:
+          - integration_created_at
+          - tool_name
+          - integrations_attach
+          - integrations_active
+
+      - join_path: fact_provisional_credits
+        prefix: false
+        includes:
+          - boost_created_at
+          - boost_attach
+          - boost_active
+
+      - join_path: fact_reserve_ledger
+        prefix: false
+        includes:
+          - reserve_activity_at
+          - activity_type
+          - reserves_attach
+          - reserves_active
+
+      - join_path: fact_mca_transactions
+        prefix: false
+        includes:
+          - mca_attach
+          - mca_active
+
+
+  - name: v_customer_success
+    description: >
+      PUBLIC VIEW — Customer Success Metrics.
+      Use this view for support ticket analysis, CSAT tracking, resolution time benchmarking,
+      and account status classification for CS operations.
+      The Account Status dimension uses the 9-level CS hierarchy where the highest-priority
+      status takes precedence (Closed-Expensed Fraud outranks all others).
+
+    cubes:
+      - join_path: dim_businesses
+        prefix: false
+        includes:
+          - business_id
+          - email
+          - account_status
+          - customer_success_account_status
+          - account_opened_month
+          - account_created_at
+          - account_closed_at
+          - last_transaction_at
+          - is_account_closed
+          - is_account_closed_for_suspected_fraud
+          - expensed_fraud_loss
+          - delinquency_days_past_due
+          - opened_accounts
+          - active_accounts
+          - financially_active_accounts
+          - closed_accounts
+          - inactive_accounts
+
+      - join_path: dim_applications
+        prefix: false
+        includes:
+          - application_id
+          - business_type
+          - business_industry_category
+
+      - join_path: fact_zendesk_tickets
+        prefix: false
+        includes:
+          - ticket_id
+          - ticket_created_at
+          - created_channel
+          - ticket_satisfaction_score
+          - contact_volume
+          - csat_score
+          - time_to_first_reply_calendar_minutes
+          - time_to_first_reply_business_minutes
+          - time_to_final_resolution_calendar_minutes
+          - time_to_final_resolution_business_minutes

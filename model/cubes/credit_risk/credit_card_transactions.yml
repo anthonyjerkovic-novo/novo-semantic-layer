@@ -1,0 +1,28 @@
+cubes:
+  - name: credit_card_transactions
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_CREDIT_CARD_TRANSACTIONS"
+    public: true
+
+    joins:
+      - name: credit_card_credit_risk
+        sql: "{CUBE}.business_id = {credit_card_credit_risk}.business_id AND DATE({CUBE}.transaction_created_at) = DATE({credit_card_credit_risk}.statement_date)"
+        relationship: many_to_one
+
+    dimensions:
+      - name: spend_date
+        sql: "{CUBE}.transaction_created_at"
+        type: time
+        primary_key: true
+        title: Spend Date
+        description: Timestamp when a credit card transaction was made
+
+    measures:
+      - name: total_spend
+        sql: "{CUBE}.spend_amount"
+        type: sum
+        title: Total Spend ($)
+        description: Total purchases on the credit card (settled and approved transactions only).
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started 

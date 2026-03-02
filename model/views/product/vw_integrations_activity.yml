@@ -1,0 +1,24 @@
+views:
+  - name: vw_integrations_activity
+    
+    cubes:
+
+      - join_path: integrations_activity
+        prefix: false
+        includes:
+          # dimensions
+          - integration_created_at
+          # measures
+          - integrations_attach
+          - integrations_active
+
+      - join_path: integrations_activity.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

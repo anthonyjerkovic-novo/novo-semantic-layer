@@ -1,0 +1,82 @@
+cubes:
+  - name: mca_revenue
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_LOAN_TAPE"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: loan_tape_id
+        sql: "{CUBE}.loan_tape_id"
+        type: string
+        primary_key: true
+        title: Loan Tape ID
+        description: Surrogate key combining snapshot date, business_id, and loan_id
+
+      - name: snap_date
+        sql: "{CUBE}.snap_date"
+        type: time
+        title: Snapshot Date
+        description: Snapshot date for the loan tape record
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: loan_id
+        sql: "{CUBE}.loan_id"
+        type: string
+        title: Loan ID
+        description: Unique identifier for the loan
+
+      - name: mca_days_past_due
+        sql: "{CUBE}.days_past_due"
+        type: number
+        title: Days Past Due
+        description: Number of days the loan payment is past due
+
+    measures:
+      - name: mca_factor_fee_revenue
+        sql: "{CUBE}.total_factor_fee_collected"
+        type: sum
+        title: MCA Factor Fee Revenue ($)
+        description: Revenue generated in USD from factor charges on MCA balances.
+
+      - name: mca_late_fee_revenue
+        sql: "{CUBE}.total_late_fee_collected"
+        type: sum
+        title: MCA Late Fee Revenue ($) 
+        description: Revenue generated in USD from late fee charges on MCA balances.
+
+      - name: mca_charge_off_loss_guco
+        sql: "CASE WHEN days_past_due = 180 THEN {CUBE}.principal_balance_outstanding END"
+        type: sum
+        title: MCA Charge Off Loss (GUCO) ($)
+        description: Amount in USD of charged off MCA principal balances.
+
+      - name: mca_principal_recovery
+        sql: "{CUBE}.total_principal_recovered"
+        type: sum
+        title: MCA Principal Recovery ($)
+        description: Amount in USD of principal recovered from a charged off MCA balance.
+
+      - name: mca_factor_fee_recovery
+        sql: "{CUBE}.total_factor_fee_recovered"
+        type: sum
+        title: MCA Factor Fee Recovery ($)
+        description: Amount in USD of factor fees recovered from a charged off MCA balance.
+
+      - name: mca_total_recovery
+        sql: "COALESCE({CUBE}.total_principal_recovered, 0) + COALESCE({CUBE}.total_factor_fee_recovered, 0)"
+        type: sum
+        title: MCA Total Recovery ($)
+        description: Total amount in USD recovered from a charged off MCA balance, including both principal and factor fees.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

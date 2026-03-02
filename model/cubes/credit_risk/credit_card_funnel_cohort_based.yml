@@ -1,0 +1,64 @@
+cubes:
+  - name: credit_card_funnel_cohort_based
+    sql_table: "DEV_DB.DEV_ANWAR.DIM_CREDIT_CARD_APPLICATION_FUNNEL"
+    public: true
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: invitation_created_at
+        sql: "{CUBE}.invitation_created_at"
+        type: time
+        title: Invitation Created At
+        description: Timestamp when the credit card invitation was created
+
+      - name: application_submitted_at
+        sql: "{CUBE}.application_submitted_at"
+        type: time
+        title: Application Submitted At
+        description: Timestamp when the credit card application was submitted
+
+      - name: decision_created_at
+        sql: "{CUBE}.decision_created_at"
+        type: time
+        title: Decision Created At
+        description: Timestamp when the credit card application decision was created
+
+    measures:
+      - name: invitations_sent
+        sql: "{CUBE}.invitation_created_at"
+        type: count
+        title: Invitations Sent (#)
+        description: Count of credit card invitations sent
+
+      - name: applications_submitted
+        sql: "CASE WHEN {CUBE}.application_submitted_at IS NOT NULL THEN {CUBE}.application_submitted_at END"
+        type: count
+        title: Applications Submitted (#)
+        description: Count of credit card applications submitted
+
+      - name: applications_approved
+        sql: "CASE WHEN {CUBE}.decision_created_at IS NOT NULL AND {CUBE}.decision = 'APPROVED' THEN {CUBE}.decision_created_at END"
+        type: count
+        title: Applications Approved (#)
+        description: Count of credit card applications approved
+
+      - name: applications_denied
+        sql: "CASE WHEN {CUBE}.decision_created_at IS NOT NULL AND {CUBE}.decision = 'DENIED' THEN {CUBE}.decision_created_at END"
+        type: count
+        title: Applications Denied (#)
+        description: Count of credit card applications denied
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

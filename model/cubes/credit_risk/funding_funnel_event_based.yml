@@ -1,0 +1,72 @@
+cubes:
+  - name: funding_funnel_event_based
+    sql: >
+      WITH dataset AS (
+          SELECT
+              invitation_created_at AS stage_timestamp
+              , business_id
+              , 'INVITE_SENT' AS stage_name
+              , NULL AS particulars
+          FROM
+              DEV_DB.DEV_ANWAR.dim_funding_application_funnel
+          
+          UNION ALL
+          
+          SELECT
+              offer_accepted_at AS stage_timestamp
+              , business_id
+              , 'OFFER_ACCEPTED' AS stage_name
+              , NULL AS particulars
+          FROM
+              DEV_DB.DEV_ANWAR.dim_funding_application_funnel
+          WHERE
+              offer_accepted_at IS NOT NULL
+
+          ORDER BY
+              stage_timestamp
+      )
+      SELECT * FROM dataset
+
+    public: true
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: stage_timestamp
+        sql: "{CUBE}.stage_timestamp"
+        type: time
+        title: Stage Timestamp
+        description: Timestamp when the funding application stage occurred
+
+      - name: stage_name
+        sql: "{CUBE}.stage_name"
+        type: string
+        title: Stage Name
+        description: Name of the funding application stage
+
+    measures:
+      - name: invitations_sent_mca
+        sql: "CASE WHEN {CUBE}.stage_name = 'INVITE_SENT' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Invitations Sent (#)
+        description: Count of funding invitations sent in the given time period
+
+      - name: offers_accepted_mca
+        sql: "CASE WHEN {CUBE}.stage_name = 'OFFER_ACCEPTED' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Offers Accepted (#)
+        description: Count of funding offers accepted in the given time period
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

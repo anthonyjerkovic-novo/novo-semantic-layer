@@ -1,0 +1,24 @@
+views:
+  - name: vw_bookkeeping_activity
+    
+    cubes:
+
+      - join_path: bookkeeping_activity
+        prefix: false
+        includes:
+          # dimensions
+          - bookkeeping_transaction_at
+          # measures
+          - bookkeeping_attach
+          - bookkeeping_active
+
+      - join_path: bookkeeping_activity.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

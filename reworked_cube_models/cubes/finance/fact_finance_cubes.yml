@@ -1,0 +1,224 @@
+cubes:
+  - name: fact_unit_economics
+    sql_table: "METABASE_DB.MART_FINANCE.FACT_UNIT_ECONOMICS"
+    public: false
+    description: >
+      MART_FINANCE — The pre-joined unit economics fact table.
+      One row per business per reporting month with ALL revenue and cost components resolved.
+      THIS TABLE MUST BE A FULLY MATERIALIZED dbt MODEL — never a view.
+      It joins 7+ upstream fact tables at build time so the semantic layer never has to.
+      Source: Composite of all revenue and cost models in MART_FINANCE and MART_CARDS.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+      - name: dim_applications
+        sql: "{CUBE}.APPLICATION_ID = {dim_applications}.APPLICATION_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: reporting_month
+        sql: "{CUBE}.REPORTING_MONTH"
+        type: time
+        title: Reporting Month
+        description: First day of the month for which this row reports all financial components.
+
+      - name: account_created_month
+        sql: "{CUBE}.ACCOUNT_CREATED_MONTH"
+        type: time
+        title: Account Opened Month
+        description: Month in which the business account was opened (OA Cohort key).
+
+    measures:
+      - name: float_revenue
+        sql: "{CUBE}.FLOAT_REVENUE"
+        type: sum
+        title: Float Revenue ($)
+        description: >
+          Revenue from interest earned on customer balances held by Novo.
+          Logic: AVG_DAILY_BALANCE × FLOAT_RATE (from PROD_DB.MODELS.FLOAT_RATE_TABLE → dbt seed).
+          NOTE: Float rate table must be migrated to version-controlled dbt seed before Gold promotion.
+
+      - name: mca_factor_fee_revenue
+        sql: "{CUBE}.MCA_FACTOR_FEE_REVENUE"
+        type: sum
+        title: MCA Factor Fee Revenue ($)
+        description: Revenue from factor charges on MCA balances. Source: PROD_DB.DATA.LOAN_TAPE.
+
+      - name: mca_late_fee_revenue
+        sql: "{CUBE}.MCA_LATE_FEE_REVENUE"
+        type: sum
+        title: MCA Late Fee Revenue ($)
+        description: Revenue from late fee charges on delinquent MCA accounts.
+
+      - name: mca_charge_off_loss
+        sql: "{CUBE}.MCA_CHARGE_OFF_LOSS"
+        type: sum
+        title: MCA Charge Off Loss — GUCO ($)
+        description: Total charged-off MCA principal at 180 DPD. Gross Unrecovered Charge-Off.
+
+      - name: mca_recovery
+        sql: "{CUBE}.MCA_RECOVERY"
+        type: sum
+        title: MCA Recovery ($)
+        description: Amounts recovered from previously charged-off MCA balances.
+
+      - name: cc_interest_revenue
+        sql: "{CUBE}.CC_INTEREST_REVENUE"
+        type: sum
+        title: Credit Card Interest Revenue ($)
+        description: >
+          Interest revenue from credit card revolvers. Source field: PAYMENT_ALLOCATED_INTEREST.
+          Deduplication: ROW_NUMBER OVER (PARTITION BY ACCOUNT_ID, STATEMENT_DATE ORDER BY RECORD_VERSION DESC) = 1.
+
+      - name: cc_late_fee_revenue
+        sql: "{CUBE}.CC_LATE_FEE_REVENUE"
+        type: sum
+        title: Credit Card Late Fee Revenue ($)
+        description: >
+          Late fee revenue from credit card accounts. Source field: PAYMENT_ALLOCATED_FEES (deduped).
+
+      - name: cc_other_fee_revenue
+        sql: "{CUBE}.CC_OTHER_FEE_REVENUE"
+        type: sum
+        title: Credit Card Other Fee Revenue ($)
+        description: >
+          Foreign transaction fees + returned payment fees.
+          Source: FIVETRAN_DB.PROD_NOVO_API_PUBLIC.CREDIT_CARD_MANAGEMENT_TRANSACTIONS
+          WHERE DESCRIPTION IN ('Foreign Transaction Fee','Returned Payment Fee')
+          AND STATUS = 'SETTLED' AND RESULT = 'APPROVED'.
+
+      - name: cc_rewards_accrued
+        sql: "{CUBE}.CC_REWARDS_ACCRUED"
+        type: sum
+        title: Credit Card Rewards Accrued ($)
+        description: >
+          Cost of rewards accrued on customer credit card accounts.
+          Source: FIVETRAN_DB.PROD_NOVO_API_PUBLIC.CREDIT_CARD_TRANSACTION_REWARDS.REWARDS / 100.
+
+      - name: cc_charge_off_loss
+        sql: "{CUBE}.CC_CHARGE_OFF_LOSS"
+        type: sum
+        title: Credit Card Charge Off Loss — GUCO ($)
+        description: Total charged-off CC principal (PAST_STATEMENTS_PRINCIPAL at DPD=180).
+
+      - name: express_ach_revenue
+        sql: "{CUBE}.EXPRESS_ACH_REVENUE"
+        type: sum
+        title: Express ACH Revenue ($)
+        description: Revenue from Express ACH fees. Source: METABASE_DB.KPI_STORE.MONTHLY_FINANCIAL.
+
+      - name: domestic_wire_revenue
+        sql: "{CUBE}.DOMESTIC_WIRE_REVENUE"
+        type: sum
+        title: Domestic Wire Revenue ($)
+        description: Revenue from wire fees. Source: FIVETRAN_DB.PROD_NOVO_API_PUBLIC.DOMESTIC_WIRES.FEE.
+
+      - name: cost_to_open_cogs
+        sql: "{CUBE}.COST_TO_OPEN_COGS"
+        type: sum
+        title: Cost to Open — COGS ($)
+        description: >
+          Physical card + KYC cost. Hard-coded: $20.06 in the account opening month, $0 all other months.
+          Maintained in a dbt seed file updated as actuals change.
+
+      - name: cost_to_run_cogs
+        sql: "{CUBE}.COST_TO_RUN_COGS"
+        type: sum
+        title: Cost to Run — COGS ($)
+        description: >
+          Monthly per-account operating cost including mRDC, servers, bank core, processing.
+          Hard-coded: $1.59 per active account per month.
+
+      - name: interchange_expenses_cogs
+        sql: "{CUBE}.INTERCHANGE_EXPENSES_COGS"
+        type: sum
+        title: Interchange Expenses — COGS ($)
+        description: >
+          Lithic program cost + Mastercard incentives. Hard-coded: $0.7026 per account per month.
+
+      - name: atm_reimbursement
+        sql: "{CUBE}.ATM_REIMBURSEMENT"
+        type: sum
+        title: ATM Reimbursement ($)
+        description: Cost of reimbursing customers for ATM fees. Hard-coded: $0.0025 per account per month.
+
+      - name: onboarding_costs
+        sql: "{CUBE}.ONBOARDING_COSTS"
+        type: sum
+        title: Onboarding Costs ($)
+        description: Total onboarding cost. Hard-coded: $2.71 in account opening month, $0 all other months.
+
+      - name: fraud_loss
+        sql: "{CUBE}.FRAUD_LOSS"
+        type: sum
+        title: Fraud Loss ($)
+        description: Expensed fraud loss at the business level (from DIM_BUSINESSES.EXPENSED_FRAUD_LOSS).
+
+      - name: revenue_excl_interchange
+        sql: "{CUBE}.TOTAL_REVENUE_EXCL_INTERCHANGE"
+        type: sum
+        title: Total Revenue Excl. Interchange ($)
+        description: >
+          Sum of all revenue line items excluding debit and credit card interchange.
+          Components: Float + MCA Factor Fee + MCA Late Fee + CC Interest + CC Late Fee +
+          CC Other Fee + Express ACH + Domestic Wire.
+
+      - name: marginal_net_income
+        sql: "{CUBE}.MARGINAL_NET_INCOME"
+        type: sum
+        title: Marginal Net Income ($)
+        description: >
+          AKA Contribution Margin.
+          Total Revenue Excl. Interchange minus all COGS and loss items:
+          (Cost to Open + Cost to Run + Interchange Expenses + ATM + Onboarding
+           + Fraud Loss + MCA Charge Off + CC Charge Off).
+          Does NOT include marketing spend.
+
+
+  - name: fact_float_revenue
+    sql_table: "METABASE_DB.MART_FINANCE.FACT_FLOAT_REVENUE"
+    public: false
+    description: >
+      MART_FINANCE — Float revenue at business/month grain.
+      Calculation: AVG_DAILY_BALANCE × FLOAT_RATE.
+      IMPORTANT: FLOAT_RATE sourced from PROD_DB.MODELS.FLOAT_RATE_TABLE.
+      This table has ZERO dbt lineage and appears manually edited in Snowflake.
+      Must be migrated to a versioned dbt seed file before this model is reliable.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: month
+        sql: "{CUBE}.MONTH"
+        type: time
+        title: Month
+        description: Reporting month for this float revenue record.
+
+    measures:
+      - name: float_revenue_approximated
+        sql: "{CUBE}.FLOAT_REVENUE_APPROXIMATED"
+        type: sum
+        title: Float Revenue ($)
+        description: >
+          Approximate float revenue = AVG_DAILY_BALANCE × FLOAT_RATE for each month.
+          Uses most recent available float rate when current month has no rate set.

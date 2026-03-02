@@ -1,0 +1,66 @@
+cubes:
+  - name: variable_costs
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_VARIABLE_COSTS"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+
+      - name: variable_costs_surrogate_key
+        sql: "SHA2(CONCAT(CAST({CUBE}.month AS VARCHAR), {CUBE}.business_id))"
+        type: string
+        primary_key: true
+        title: Variable Costs Surrogate Key
+        description: Concatenation of reporting_month and business_id as a unique surrogate key
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: reporting_month
+        sql: "{CUBE}.reporting_month"
+        type: time
+        primary_key: true
+        title: Reporting Month
+        description: Month for which the variable costs are reported
+
+    measures:
+      - name: cost_to_open_cogs
+        sql: "{CUBE}.cost_to_open_cogs"
+        type: sum
+        title: Cost to Open COGS ($)
+        description: Cost in USD associated with opening a new account. This include physical card costs and KYC costs.
+
+      - name: cost_to_run_cogs
+        sql: "{CUBE}.cost_to_run_cogs"
+        type: sum
+        title: Cost to Run COGS ($)
+        description: Cost in USD associated with running an account. This includes MRDC costs, servers/hosting, bank core costs, processing costs, bank transaction charges, transaction monitoring, and other costs to run.
+
+      - name: onboarding_costs
+        sql: "{CUBE}.onboarding_costs"
+        type: sum
+        title: Onboarding Costs ($)
+        description: Costs in USD associated with the onboarding process.
+
+      - name: interchange_expenses_cogs
+        sql: "{CUBE}.interchange_expenses_cogs"
+        type: sum
+        title: Interchange Expenses COGS ($)
+        description: Cost in USD associated with running the debit card program.
+
+      - name: atm_reimbursement
+        sql: "{CUBE}.atm_reimbursement"
+        type: sum
+        title: ATM Reimbursement ($)
+        description: Cost in USD attributed to reimbursing customers for ATM fees.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started 

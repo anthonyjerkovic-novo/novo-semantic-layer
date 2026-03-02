@@ -1,0 +1,101 @@
+cubes:
+  - name: transactions
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_TRANSACTIONS"
+    public: false
+
+    dimensions:
+      - name: transaction_id
+        sql: "{CUBE}.transaction_id"
+        type: string
+        primary_key: true
+        title: Transaction ID
+        description: Unique identifier for the transaction
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Identifier for the business associated with the transaction
+
+      - name: account_id
+        sql: "{CUBE}.account_id"
+        type: string
+        title: Account ID
+        description: Account identifier for the transaction
+
+      - name: category_id
+        sql: "{CUBE}.category_id"
+        type: string
+        title: Category ID
+        description: Transaction category identifier
+
+      - name: transaction_at
+        sql: "{CUBE}.transaction_at"
+        type: time
+        title: Transaction Timestamp
+        description: Timestamp of the transaction
+
+      # - name: transaction_created_on
+      #   sql: "{CUBE}.transaction_created_on"
+      #   type: time
+      #   title: Transaction Created Date
+      #   description: Date on which the transaction record was created
+
+      - name: credit_or_debit
+        sql: "{CUBE}.credit_or_debit"
+        type: string
+        title: Transaction Type (Credit/Debit)
+        description: Whether the transaction is a credit or debit
+
+      - name: medium
+        sql: "{CUBE}.medium"
+        type: string
+        title: Transaction Medium
+        description: The medium through which the transaction was processed
+
+      - name: derived_medium
+        sql: "{CUBE}.derived_medium"
+        type: string
+        title: Derived Medium
+        description: Derived classification of the transaction medium
+
+      - name: vvc_medium
+        sql: "{CUBE}.vvc_medium"
+        type: string
+        title: VVC Medium
+        description: VVC classification of the transaction medium
+
+      - name: transaction_description
+        sql: "{CUBE}.transaction_description"
+        type: string
+        title: Transaction Description
+        description: Description of the transaction
+
+      - name: transaction_status
+        sql: "{CUBE}.transaction_status"
+        type: string
+        title: Transaction Status
+        description: Current status of the transaction
+
+      - name: origination_type
+        sql: "{CUBE}.origination_type"
+        type: string
+        title: Origination Type
+        description: Whether the payment originated internally from a Novo user (Internal) or by Novo user through an external account (External)
+
+    measures:
+      - name: gross_transactions
+        sql: "{CUBE}.transaction_id"
+        type: count
+        title: Gross Transactions (#)
+        description: Total number of transactions
+
+      - name: gross_transaction_volume
+        sql: "{CUBE}.transaction_amount"
+        type: sum
+        title: Gross Transaction Volume ($)
+        description: Sum of all transaction amounts
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

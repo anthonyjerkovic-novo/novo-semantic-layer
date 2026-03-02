@@ -1,0 +1,14 @@
+views:
+  - name: vw_ltv_components_18m
+    
+    cubes:
+
+      - join_path: ltv_components_18m
+        prefix: false
+        includes:
+          # dimensions
+          - acquisition_channel
+          - application_decision
+          # measures
+          - ltv_18m_m1
+          - ltv_18m_m3

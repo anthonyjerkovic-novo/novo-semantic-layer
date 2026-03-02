@@ -1,0 +1,445 @@
+cubes:
+  - name: fact_activation_milestones
+    sql_table: "METABASE_DB.MART_PRODUCT.FACT_ACTIVATION_MILESTONES"
+    public: false
+    description: >
+      MART_PRODUCT — One row per business. First-ever activation timestamps for each Novo product.
+      Used for all "attach" metrics across the product suite.
+      Built from the BUSINESS_SPECIFIC_ORDINAL = 1 record from each activity fact table.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: debit_card_attached_at
+        sql: "{CUBE}.DEBIT_CARD_ATTACHED_AT"
+        type: time
+        title: Debit Card Attached At
+        description: Timestamp of the first debit card request event for this business.
+
+      - name: credit_card_attached_at
+        sql: "{CUBE}.CREDIT_CARD_ATTACHED_AT"
+        type: time
+        title: Credit Card Attached At
+        description: Timestamp of the first credit card request approval event.
+
+      - name: mca_attached_at
+        sql: "{CUBE}.MCA_ATTACHED_AT"
+        type: time
+        title: MCA Attached At
+        description: Timestamp of the first MCA draw event.
+
+      - name: express_ach_attached_at
+        sql: "{CUBE}.EXPRESS_ACH_ATTACHED_AT"
+        type: time
+        title: Express ACH Attached At
+        description: Timestamp when business first used Express ACH.
+
+      - name: invoice_attached_at
+        sql: "{CUBE}.INVOICE_ATTACHED_AT"
+        type: time
+        title: Invoice Attached At
+        description: Timestamp when business first created and sent an invoice.
+
+      - name: reserves_attached_at
+        sql: "{CUBE}.RESERVES_ATTACHED_AT"
+        type: time
+        title: Reserves Attached At
+        description: Timestamp when business first created a Reserve.
+
+      - name: bookkeeping_attached_at
+        sql: "{CUBE}.BOOKKEEPING_ATTACHED_AT"
+        type: time
+        title: Bookkeeping Attached At
+        description: Timestamp when business first categorized a transaction.
+
+      - name: integration_attached_at
+        sql: "{CUBE}.INTEGRATION_ATTACHED_AT"
+        type: time
+        title: Integration Attached At
+        description: Timestamp when business first connected an integration (Stripe, Shopify, etc.).
+
+      - name: is_f90d
+        sql: "{CUBE}.IS_F90D"
+        type: boolean
+        title: First 90 Day Customer (F90D)
+        description: >
+          TRUE if the business is within 90 days of account opening.
+          Currently missing from the legacy Cube implementation — new dimension.
+
+
+  - name: fact_invoice_activity
+    sql_table: "METABASE_DB.MART_PRODUCT.FACT_INVOICE_ACTIVITY"
+    public: false
+    description: >
+      MART_PRODUCT — Invoice feature activity. One row per invoice.
+      Source: DEV_DB.DEV_ANWAR.FACT_INVOICE_ACTIVITY → promote to METABASE_DB.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: invoice_id
+        sql: "{CUBE}.INVOICE_ID"
+        type: string
+        primary_key: true
+        title: Invoice ID
+        description: UUID — primary key for the invoice.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: invoice_created_at
+        sql: "{CUBE}.INVOICE_CREATED_AT"
+        type: time
+        title: Invoice Created At
+        description: Timestamp when the invoice was created.
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.BUSINESS_SPECIFIC_ORDINAL"
+        type: number
+        title: Business Ordinal
+        description: Sequential rank of this invoice for the business. 1 = first invoice ever.
+
+    measures:
+      - name: invoice_attach
+        sql: "CASE WHEN {CUBE}.BUSINESS_SPECIFIC_ORDINAL = 1 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Invoice Attach (#)
+        description: Distinct businesses that have created and sent at least one invoice.
+
+      - name: invoice_active
+        sql: "{CUBE}.BUSINESS_ID"
+        type: count_distinct
+        title: Invoice Active (#)
+        description: Distinct businesses that have created and sent an invoice in the reporting period.
+
+
+  - name: fact_bookkeeping_activity
+    sql_table: "METABASE_DB.MART_PRODUCT.FACT_BOOKKEEPING_ACTIVITY"
+    public: false
+    description: >
+      MART_PRODUCT — Bookkeeping activity per categorized transaction.
+      Source: DEV_DB.DEV_ANWAR.FACT_BOOKKEEPING_ACTIVITY → promote to METABASE_DB.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: categorized_transaction_id
+        sql: "{CUBE}.CATEGORIZED_TRANSACTION_ID"
+        type: string
+        primary_key: true
+        title: Categorized Transaction ID
+        description: UUID — primary key for the bookkeeping activity record.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: bookkeeping_transaction_at
+        sql: "{CUBE}.BOOKKEEPING_TRANSACTION_AT"
+        type: time
+        title: Bookkeeping Transaction At
+        description: Timestamp of the categorized transaction event.
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.BUSINESS_SPECIFIC_ORDINAL"
+        type: number
+        title: Business Ordinal
+        description: Sequential rank. 1 = first-ever categorized transaction.
+
+    measures:
+      - name: bookkeeping_attach
+        sql: "CASE WHEN {CUBE}.BUSINESS_SPECIFIC_ORDINAL = 1 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Bookkeeping Attach (#)
+        description: Distinct businesses with at least one categorized transaction.
+
+      - name: bookkeeping_active
+        sql: "{CUBE}.BUSINESS_ID"
+        type: count_distinct
+        title: Bookkeeping Active (#)
+        description: Distinct businesses that used bookkeeping in the reporting period.
+
+
+  - name: fact_integration_connections
+    sql_table: "METABASE_DB.MART_PRODUCT.FACT_INTEGRATION_CONNECTIONS"
+    public: false
+    description: >
+      MART_PRODUCT — Third-party integration connections.
+      Source: DEV_DB.DEV_ANWAR.FACT_INTEGRATIONS_ACTIVITY → promote to METABASE_DB.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: integration_id
+        sql: "{CUBE}.INTEGRATION_ID"
+        type: string
+        primary_key: true
+        title: Integration ID
+        description: UUID — primary key for the integration connection record.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: integration_created_at
+        sql: "{CUBE}.INTEGRATION_CREATED_AT"
+        type: time
+        title: Integration Connected At
+        description: Timestamp when the integration was first connected.
+
+      - name: tool_name
+        sql: "{CUBE}.TOOL_NAME"
+        type: string
+        title: Integration Tool
+        description: Name of the connected tool (Stripe, Shopify, QuickBooks, etc.).
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.BUSINESS_SPECIFIC_ORDINAL"
+        type: number
+        title: Business Ordinal
+        description: Sequential rank. 1 = first integration ever connected.
+
+    measures:
+      - name: integrations_attach
+        sql: "CASE WHEN {CUBE}.BUSINESS_SPECIFIC_ORDINAL = 1 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Integrations Attach (#)
+        description: Distinct businesses with at least one integration connection.
+
+      - name: integrations_active
+        sql: "{CUBE}.BUSINESS_ID"
+        type: count_distinct
+        title: Integrations Active (#)
+        description: Distinct businesses with an active integration in the reporting period.
+
+
+  - name: fact_provisional_credits
+    sql_table: "METABASE_DB.MART_PRODUCT.FACT_PROVISIONAL_CREDITS"
+    public: false
+    description: >
+      MART_PRODUCT — Boost (provisional credit) activity per business per month.
+      Source: DEV_DB.DEV_ANWAR.FACT_PROVISIONAL_CREDITS_ACTIVITY → promote to METABASE_DB.
+      Bronze source: FIVETRAN_DB.PROD_NOVO_API_PUBLIC.PROVISIONAL_CREDITS.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: provisional_credit_id
+        sql: "{CUBE}.PROVISIONAL_CREDIT_ID"
+        type: string
+        primary_key: true
+        title: Provisional Credit ID
+        description: UUID — primary key for the boost event.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: boost_created_at
+        sql: "{CUBE}.BOOST_CREATED_AT"
+        type: time
+        title: Boost Created At
+        description: Timestamp of the boost (provisional credit) event.
+
+      - name: boost_amount
+        sql: "{CUBE}.BOOST_AMOUNT"
+        type: number
+        title: Boost Amount ($)
+        description: Dollar value of the provisional credit.
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.BUSINESS_SPECIFIC_ORDINAL"
+        type: number
+        title: Business Ordinal
+        description: Sequential rank of this boost. 1 = first boost ever received.
+
+    measures:
+      - name: boost_attach
+        sql: "CASE WHEN {CUBE}.BUSINESS_SPECIFIC_ORDINAL = 1 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Boost Users — Attach (#)
+        description: Distinct businesses that have ever received a boost (provisional credit).
+
+      - name: boost_active
+        sql: "CASE WHEN {CUBE}.BOOST_AMOUNT > 0 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Active Boost Users (#)
+        description: Distinct businesses with a boost payment in the reporting period.
+
+
+  - name: fact_reserve_ledger
+    sql_table: "METABASE_DB.MART_PRODUCT.FACT_RESERVE_LEDGER"
+    public: false
+    description: >
+      MART_PRODUCT — Reserve activity events. One row per reserve activity.
+      Source: DEV_DB.DEV_ANWAR.FACT_RESERVES_ACTIVITY → promote to METABASE_DB.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: reserve_activity_id
+        sql: "{CUBE}.RESERVE_ACTIVITY_ID"
+        type: string
+        primary_key: true
+        title: Reserve Activity ID
+        description: UUID — primary key for the reserve activity record.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: reserve_activity_at
+        sql: "{CUBE}.RESERVE_ACTIVITY_AT"
+        type: time
+        title: Reserve Activity At
+        description: Timestamp of the reserve creation or payment event.
+
+      - name: activity_type
+        sql: "{CUBE}.ACTIVITY_TYPE"
+        type: string
+        title: Activity Type
+        description: "create (new reserve), payment (reserve contribution), or withdrawal."
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.BUSINESS_SPECIFIC_ORDINAL"
+        type: number
+        title: Business Ordinal
+        description: Sequential rank. 1 = first reserve activity ever.
+
+    measures:
+      - name: reserves_attach
+        sql: "CASE WHEN {CUBE}.BUSINESS_SPECIFIC_ORDINAL = 1 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Reserves Attach (#)
+        description: Distinct businesses that have created at least one Reserve.
+
+      - name: reserves_active
+        sql: "{CUBE}.BUSINESS_ID"
+        type: count_distinct
+        title: Reserves Active (#)
+        description: Distinct businesses with a reserve creation or payment in the last 30 days.
+
+
+  - name: fact_zendesk_tickets
+    sql_table: "METABASE_DB.MART_PRODUCT.FACT_ZENDESK_TICKETS"
+    public: false
+    description: >
+      MART_PRODUCT — Customer success tickets from Zendesk. One row per ticket.
+      Source: METABASE_DB.CS.ZENDESK_TICKET_METRICS.
+      NOTE: Exclude CREATED_CHANNEL = 'side_conversation' from all contact volume counts.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: ticket_id
+        sql: "{CUBE}.TICKET_ID"
+        type: number
+        primary_key: true
+        title: Ticket ID
+        description: Zendesk ticket ID — primary key.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: ticket_created_at
+        sql: "{CUBE}.TICKET_CREATED_AT"
+        type: time
+        title: Ticket Created At
+        description: Timestamp when the customer support ticket was opened.
+
+      - name: created_channel
+        sql: "{CUBE}.CREATED_CHANNEL"
+        type: string
+        title: Contact Channel
+        description: >
+          How the customer contacted Novo. Exclude 'side_conversation' from volume counts.
+          Common values: email, chat, voice, web, social.
+
+      - name: ticket_satisfaction_score
+        sql: "{CUBE}.TICKET_SATISFACTION_SCORE"
+        type: string
+        title: CSAT Score
+        description: "Customer satisfaction rating: 'good' or 'bad'."
+
+    measures:
+      - name: contact_volume
+        sql: "CASE WHEN {CUBE}.CREATED_CHANNEL != 'side_conversation' THEN {CUBE}.TICKET_ID END"
+        type: count_distinct
+        title: Contact Volume (#)
+        description: Total customer contacts excluding internal side conversations.
+
+      - name: csat_score
+        sql: >
+          100.0 * COUNT_IF({CUBE}.TICKET_SATISFACTION_SCORE ILIKE 'good')
+          / NULLIF(COUNT_IF({CUBE}.TICKET_SATISFACTION_SCORE IS NOT NULL), 0)
+        type: number
+        title: CSAT (%)
+        description: >
+          Customer satisfaction rate as a percentage.
+          Count of 'good' ratings / total rated tickets × 100.
+
+      - name: time_to_first_reply_calendar_minutes
+        sql: "{CUBE}.TIME_TO_FIRST_REPLY_CALENDAR_MINUTES"
+        type: avg
+        title: First Reply Time — Calendar (min)
+        description: Average calendar minutes from ticket creation to first agent reply.
+
+      - name: time_to_first_reply_business_minutes
+        sql: "{CUBE}.TIME_TO_FIRST_REPLY_BUSINESS_MINUTES"
+        type: avg
+        title: First Reply Time — Business Hours (min)
+        description: Average business-hours minutes from ticket creation to first agent reply.
+
+      - name: time_to_final_resolution_calendar_minutes
+        sql: "{CUBE}.TIME_TO_FINAL_RESOLUTION_CALENDAR_MINUTES"
+        type: avg
+        title: Time to Full Resolution — Calendar (min)
+        description: Average calendar minutes from ticket creation to full closure.
+
+      - name: time_to_final_resolution_business_minutes
+        sql: "{CUBE}.TIME_TO_FINAL_RESOLUTION_BUSINESS_MINUTES"
+        type: avg
+        title: Time to Full Resolution — Business Hours (min)
+        description: Average business-hours minutes from ticket creation to full closure.

@@ -1,0 +1,34 @@
+cubes:
+  - name: debit_card_requests
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_DEBIT_CARD_REQUESTS"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: debit_card_requested_at
+        sql: "{CUBE}.debit_card_requested_at"
+        type: time
+        title: Debit Card Requested At
+        description: Earliest timestamp when a debit card request was created for a business.
+
+    measures:
+      - name: debit_card_attach
+        sql: "{CUBE}.business_id"
+        type: count_distinct
+        title: Debit Card Attach (#)
+        description: Count of distinct businesses that requested a debit card in a given time period.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

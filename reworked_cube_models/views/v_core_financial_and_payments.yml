@@ -1,0 +1,139 @@
+views:
+  - name: v_core_financial
+    description: >
+      PUBLIC VIEW — Core Financial Metrics.
+      Use this view for all account lifecycle analysis, cohort retention, churn, and summary financial
+      reporting. Includes account status, OA cohort dimensions, average balance and fraud loss.
+      Every row represents a Novo business account aggregated for a given reporting period.
+
+    cubes:
+      - join_path: dim_businesses
+        prefix: false
+        includes:
+          - business_id
+          - account_opened_month
+          - account_status
+          - customer_success_account_status
+          - account_created_at
+          - account_closed_at
+          - first_transaction_at
+          - last_transaction_at
+          - is_account_1k_funded
+          - is_account_inactive_60days
+          - is_account_closed
+          - is_account_closed_for_suspected_fraud
+          - expensed_fraud_loss
+          - opened_accounts
+          - funded_accounts
+          - active_accounts
+          - financially_active_accounts
+          - debit_card_active_accounts
+          - closed_accounts
+          - inactive_accounts
+          - closure_churn
+          - fraud_loss
+
+      - join_path: dim_applications
+        prefix: false
+        includes:
+          - business_type
+          - b2b_services_flag
+          - business_industry_category
+          - business_industry_name
+          - business_establishment_date
+          - application_decision
+
+      - join_path: fact_monthly_balances
+        prefix: false
+        includes:
+          - balance_month
+          - avg_daily_balance_aggr_monthly
+
+      - join_path: fact_unit_economics
+        prefix: false
+        includes:
+          - reporting_month
+          - float_revenue
+          - mca_factor_fee_revenue
+          - mca_late_fee_revenue
+          - mca_charge_off_loss
+          - mca_recovery
+          - cc_interest_revenue
+          - cc_late_fee_revenue
+          - cc_other_fee_revenue
+          - cc_rewards_accrued
+          - cc_charge_off_loss
+          - express_ach_revenue
+          - domestic_wire_revenue
+          - cost_to_open_cogs
+          - cost_to_run_cogs
+          - interchange_expenses_cogs
+          - atm_reimbursement
+          - onboarding_costs
+          - revenue_excl_interchange
+          - marginal_net_income
+
+
+  - name: v_payments
+    description: >
+      PUBLIC VIEW — Payments & Transaction Metrics.
+      Use this view for money movement analysis across all payment rails.
+      Covers debit card, ACH (push/pull), domestic wires, mobile check deposit (mRDC),
+      and transaction decisions/statuses. Interchange data is from Lithic daily settlement reports.
+
+    cubes:
+      - join_path: dim_businesses
+        prefix: false
+        includes:
+          - business_id
+          - account_opened_month
+          - customer_success_account_status
+
+      - join_path: dim_applications
+        prefix: false
+        includes:
+          - business_type
+          - business_industry_category
+
+      - join_path: fact_transactions
+        prefix: false
+        includes:
+          - transaction_date
+          - credit_or_debit
+          - derived_medium
+          - origination_type
+          - transaction_status
+          - transaction_at
+          - gross_transactions
+          - gross_volume
+
+      - join_path: fact_ach_transfers
+        prefix: false
+        includes:
+          - transfer_date
+          - transfer_type
+          - transfer_status
+          - ach_push_decision
+          - ach_pull_decision
+          - express_ach_flag
+          - express_ach_revenue
+          - ach_transfer_count
+
+      - join_path: fact_domestic_wires
+        prefix: false
+        includes:
+          - wire_date
+          - wire_status
+          - wire_decision
+          - domestic_wire_revenue
+          - wire_count
+
+      - join_path: fact_lithic_settlement
+        prefix: false
+        includes:
+          - report_date
+          - interchange_eligible_spend_dc
+          - interchange_revenue_dc
+          - interchange_eligible_spend_cc
+          - interchange_revenue_cc
+          - total_interchange_revenue

@@ -1,0 +1,25 @@
+views:
+  - name: vw_credit_card_primary_revenue
+    
+    cubes:
+
+      - join_path: credit_card_primary_revenue
+        prefix: false
+        includes:
+          # dimensions
+          - statement_date
+          # measures
+          - credit_card_interest_revenue
+          - credit_card_late_fee_revenue
+          - credit_card_charge_off_loss_guco
+
+      - join_path: credit_card_primary_revenue.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

@@ -1,0 +1,46 @@
+cubes:
+  - name: funding_funnel_cohort_based
+    sql_table: "DEV_DB.DEV_ANWAR.DIM_FUNDING_APPLICATION_FUNNEL"
+    public: true
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: invitation_created_at
+        sql: "{CUBE}.invitation_created_at"
+        type: time
+        title: Invitation Created At
+        description: Timestamp when the funding invitation was created
+
+      - name: offer_accepted_at
+        sql: "{CUBE}.offer_accepted_at"
+        type: time
+        title: Offer Accepted At
+        description: Timestamp when the funding offer was accepted
+
+    measures:
+      - name: invitations_sent_mca
+        sql: "{CUBE}.invitation_created_at"
+        type: count
+        title: Invitations Sent (#)
+        description: Count of MCA invitations sent
+
+      - name: offers_accepted_mca
+        sql: "CASE WHEN {CUBE}.offer_accepted_at IS NOT NULL THEN {CUBE}.offer_accepted_at END"
+        type: count
+        title: Offers Accepted (#)
+        description: Count of MCA offers accepted
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

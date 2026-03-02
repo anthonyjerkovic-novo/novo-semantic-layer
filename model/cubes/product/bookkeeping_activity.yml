@@ -1,0 +1,52 @@
+cubes:
+  - name: bookkeeping_activity
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_BOOKKEEPING_ACTIVITY"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: categorized_transaction_id
+        sql: "{CUBE}.categorized_transaction_id"
+        type: string
+        primary_key: true
+        title: Categorized Transaction ID
+        description: Unique identifier for the bookkeeping transactions
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: bookkeeping_transaction_at
+        sql: "{CUBE}.bookkeeping_transaction_at"
+        type: time
+        title: Bookkeeping Transaction At
+        description: Timestamp of the bookkeeping transaction
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.business_specific_ordinal"
+        type: number
+        title: Business Specific Ordinal
+        description: Sequential number of bookkeeping transactions for each business
+
+    measures:
+      - name: bookkeeping_attach
+        sql: "CASE WHEN {CUBE}.business_specific_ordinal = 1 THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Bookkeeping Attach (#)
+        description: Count of distinct businesses that had their first bookkeeping transactions in a given time period.
+
+      - name: bookkeeping_active
+        sql: "{CUBE}.business_id"
+        type: count_distinct
+        title: Bookkeeping Active (#)
+        description: Count of distinct businesses that had any bookkeeping transaction in a given time period.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

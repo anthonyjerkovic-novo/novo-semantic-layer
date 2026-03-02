@@ -1,0 +1,40 @@
+cubes:
+  - name: float_revenue
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_FLOAT_REVENUE"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions: 
+      - name: float_revenue_surrogate_key
+        sql: "SHA2(CONCAT(CAST({CUBE}.month AS VARCHAR), {CUBE}.business_id))"
+        type: string
+        primary_key: true
+        title: Float Revenue Surrogate Key
+        description: Concatenation of month and business_id as a unique surrogate key
+
+      - name: month
+        sql: "{CUBE}.month"
+        type: time
+        title: Month
+        description: Month for the float revenue data
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+    measures:
+      - name: float_revenue_approximated
+        sql: "{CUBE}.float_revenue_approximated"
+        type: sum
+        title: Float Revenue (Approximated) ($)
+        description: The revenue in USD generated from balances held by accounts.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started 

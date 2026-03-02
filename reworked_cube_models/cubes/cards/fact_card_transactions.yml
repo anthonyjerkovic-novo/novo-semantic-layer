@@ -1,0 +1,238 @@
+cubes:
+  - name: fact_debit_card_transactions
+    sql_table: "METABASE_DB.MART_CARDS.FACT_DEBIT_CARD_TRANSACTIONS"
+    public: false
+    description: >
+      MART_CARDS — One row per debit card transaction event (authorization + settlement).
+      Includes approved, declined, and reversed events. Dispute signals are denormalized.
+      Source of truth for Debit Card Status, Debit Card Decision, and interchange-eligible spend.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: card_transaction_id
+        sql: "{CUBE}.CARD_TRANSACTION_ID"
+        type: string
+        primary_key: true
+        title: Card Transaction ID
+        description: UUID — primary key for the debit card transaction event.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: transaction_date
+        sql: "{CUBE}.TRANSACTION_DATE"
+        type: time
+        title: Transaction Date
+        description: Date the debit card transaction occurred.
+
+      - name: merchant_category_code
+        sql: "{CUBE}.MERCHANT_CATEGORY_CODE"
+        type: string
+        title: Merchant Category Code (MCC)
+        description: Network-assigned merchant category code.
+
+      - name: pos_type
+        sql: "{CUBE}.POS_TYPE"
+        type: string
+        title: POS Type
+        description: "In-person, online, ATM, etc."
+
+      - name: transaction_status
+        sql: "{CUBE}.TRANSACTION_STATUS"
+        type: string
+        title: Debit Card Status
+        description: "Final state of the transaction: approved, declined, settled, reversed."
+
+      - name: result
+        sql: "{CUBE}.RESULT"
+        type: string
+        title: Debit Card Decision
+        description: Decision outcome from the card authorization system.
+
+      - name: decline_reason
+        sql: "{CUBE}.DECLINE_REASON"
+        type: string
+        title: Decline Reason
+        description: Human-readable reason for the decline, if applicable.
+
+      - name: sardine_transaction_risk_level
+        sql: "{CUBE}.SARDINE_TRANSACTION_RISK_LEVEL"
+        type: string
+        title: Sardine Risk Level
+        description: Fraud risk signal from Sardine at the time of authorization.
+
+      - name: wallet_type
+        sql: "{CUBE}.WALLET_TYPE"
+        type: string
+        title: Wallet Type
+        description: "Apple Pay, Google Pay, Samsung Pay, or null for physical card."
+
+    measures:
+      - name: debit_card_transaction_count
+        sql: "{CUBE}.CARD_TRANSACTION_ID"
+        type: count_distinct
+        title: Debit Card Transaction Count (#)
+        description: Total number of debit card transaction events (including declines).
+
+      - name: debit_card_settled_volume
+        sql: "CASE WHEN {CUBE}.TRANSACTION_STATUS = 'settled' THEN {CUBE}.SETTLED_AMOUNT END"
+        type: sum
+        title: Debit Card Settled Volume ($)
+        description: Total settled debit card spend.
+
+
+  - name: fact_credit_card_transactions
+    sql_table: "METABASE_DB.MART_CARDS.FACT_CREDIT_CARD_TRANSACTIONS"
+    public: false
+    description: >
+      MART_CARDS — One row per credit card transaction event (authorization + settlement).
+      Source of truth for Credit Card Status, Credit Card Decision, CC spend metrics,
+      and outstanding balance / utilization (joined from loan tape at build time).
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: transaction_id
+        sql: "{CUBE}.TRANSACTION_ID"
+        type: string
+        primary_key: true
+        title: CC Transaction ID
+        description: UUID — primary key for the credit card transaction event.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: transaction_date
+        sql: "{CUBE}.TRANSACTION_DATE"
+        type: time
+        title: Transaction Date
+        description: Date the credit card transaction occurred.
+
+      - name: merchant_category_code
+        sql: "{CUBE}.MERCHANT_CATEGORY_CODE"
+        type: string
+        title: Merchant Category Code (MCC)
+        description: Network-assigned merchant category code.
+
+      - name: transaction_status
+        sql: "{CUBE}.TRANSACTION_STATUS"
+        type: string
+        title: Credit Card Status
+        description: "approved, declined, settled, reversed."
+
+      - name: result
+        sql: "{CUBE}.RESULT"
+        type: string
+        title: Credit Card Decision
+        description: Decision outcome from the credit card authorization system.
+
+      - name: decline_reason
+        sql: "{CUBE}.DECLINE_REASON"
+        type: string
+        title: Decline Reason
+        description: Human-readable decline reason, if applicable.
+
+      - name: sardine_transaction_risk_level
+        sql: "{CUBE}.SARDINE_TRANSACTION_RISK_LEVEL"
+        type: string
+        title: Sardine Risk Level
+        description: Fraud risk signal from Sardine at authorization time.
+
+    measures:
+      - name: cc_total_spend
+        sql: "CASE WHEN {CUBE}.TRANSACTION_STATUS = 'settled' AND {CUBE}.RESULT = 'APPROVED' THEN {CUBE}.SETTLED_AMOUNT END"
+        type: sum
+        title: CC Total Spend ($)
+        description: >
+          Total credit card spend on settled, approved transactions.
+          Currently missing from legacy Cube implementation — new measure.
+
+      - name: cc_outstanding_balance
+        sql: "{CUBE}.OUTSTANDING_BALANCE"
+        type: sum
+        title: CC Outstanding Balance ($)
+        description: >
+          Outstanding balance from the most recent loan tape snapshot (deduped by RECORD_VERSION).
+          Currently missing from legacy Cube implementation — new measure.
+
+      - name: cc_utilization
+        sql: "CASE WHEN {CUBE}.CREDIT_LIMIT > 0 THEN {CUBE}.OUTSTANDING_BALANCE / {CUBE}.CREDIT_LIMIT END"
+        type: avg
+        title: CC Utilization Rate
+        description: >
+          Average utilization rate (outstanding balance / credit limit).
+          Currently missing from legacy Cube implementation — new measure.
+
+      - name: cc_transaction_count
+        sql: "{CUBE}.TRANSACTION_ID"
+        type: count_distinct
+        title: CC Transaction Count (#)
+        description: Total number of credit card transaction events (including declines).
+
+
+  - name: fact_lithic_settlement
+    sql_table: "METABASE_DB.MART_CARDS.FACT_LITHIC_SETTLEMENT"
+    public: false
+    description: >
+      MART_CARDS — One row per daily Lithic card network settlement report.
+      Single source of truth for interchange-eligible spend and interchange revenue
+      for both debit card and credit card programs.
+      Source: FIVETRAN_DB.PROD_NOVO_API_PUBLIC.DEBIT_CARD_LITHIC_SETTLEMENT_REPORTS
+              + FIVETRAN_DB.PROD_NOVO_API_PUBLIC.CREDIT_CARD_LITHIC_SETTLEMENT_REPORTS.
+      NOTE: Pre-aggregated to daily grain by the network — cannot be made more granular.
+
+    dimensions:
+      - name: report_date
+        sql: "{CUBE}.REPORT_DATE"
+        type: time
+        primary_key: true
+        title: Settlement Report Date
+        description: Date of the Lithic card network settlement report.
+
+    measures:
+      - name: interchange_eligible_spend_dc
+        sql: "{CUBE}.TRANSACTIONS_GROSS_AMOUNT_DC"
+        type: sum
+        title: Interchange Eligible Spend — Debit Card ($)
+        description: >
+          Total debit card gross spend eligible for interchange revenue capture.
+          Pre-aggregated at daily level — cannot be broken down by individual transaction.
+
+      - name: interchange_revenue_dc
+        sql: "{CUBE}.INTERCHANGE_GROSS_AMOUNT_DC"
+        type: sum
+        title: Interchange Revenue — Debit Card ($)
+        description: Net interchange revenue from debit card swipes for the reporting period.
+
+      - name: interchange_eligible_spend_cc
+        sql: "{CUBE}.TRANSACTIONS_GROSS_AMOUNT_CC"
+        type: sum
+        title: Interchange Eligible Spend — Credit Card ($)
+        description: >
+          Total credit card gross spend eligible for interchange revenue capture.
+          Pre-aggregated at daily level — cannot be broken down by individual transaction.
+
+      - name: interchange_revenue_cc
+        sql: "{CUBE}.INTERCHANGE_GROSS_AMOUNT_CC"
+        type: sum
+        title: Interchange Revenue — Credit Card ($)
+        description: Net interchange revenue from credit card swipes for the reporting period.
+
+      - name: total_interchange_revenue
+        sql: "{CUBE}.INTERCHANGE_GROSS_AMOUNT_DC + {CUBE}.INTERCHANGE_GROSS_AMOUNT_CC"
+        type: sum
+        title: Total Interchange Revenue ($)
+        description: Combined interchange revenue from both debit and credit card programs.

@@ -1,0 +1,26 @@
+views:
+  - name: vw_businesses
+    
+    cubes:
+
+      - join_path: businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - account_closed_at
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure
+          # Measures
+          - opened_accounts
+          - active_accounts
+          - funded_1k_accounts
+          - financially_active_accounts
+          - debit_card_active_accounts
+          - credit_card_active_accounts
+          - closed_accounts
+          - inactive_accounts
+          - expensed_fraud_loss

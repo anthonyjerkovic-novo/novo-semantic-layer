@@ -1,0 +1,194 @@
+cubes:
+  - name: fact_ach_transfers
+    sql_table: "METABASE_DB.MART_BANKING.FACT_ACH_TRANSFERS"
+    public: false
+    description: >
+      MART_BANKING — One row per ACH transfer event (push or pull).
+      Contains rail-specific decisioning outcomes and Express ACH revenue.
+      Decision logic is pre-computed in dbt (not at query time) to avoid Bronze joins.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: transfer_id
+        sql: "{CUBE}.TRANSFER_ID"
+        type: string
+        primary_key: true
+        title: Transfer ID
+        description: UUID — primary key for the ACH transfer.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: transfer_date
+        sql: "{CUBE}.TRANSFER_DATE"
+        type: time
+        title: Transfer Date
+        description: Date the transfer was initiated.
+
+      - name: transfer_type
+        sql: "{CUBE}.TRANSFER_TYPE"
+        type: string
+        title: Transfer Type
+        description: "ach_push, ach_pull, or express_ach."
+
+      - name: transfer_status
+        sql: "{CUBE}.TRANSFER_STATUS"
+        type: string
+        title: ACH Status
+        description: >
+          Debit Card: ACH Pull Status from METABASE_DB.MART_BANKING.FACT_ACH_TRANSFERS.TRANSFER_STATUS.
+          ACH Push Status from METABASE_DB.MART_BANKING.FACT_ACH_TRANSFERS.TRANSFER_STATUS.
+          Values: pending, approved, completed, returned, rejected.
+
+      - name: ach_push_decision
+        sql: "{CUBE}.ACH_PUSH_DECISION"
+        type: string
+        title: ACH Push Decision
+        description: >
+          Pre-computed decision outcome for outbound ACH transfers.
+          Logic: sub-select TRANSFER_EVENTS WHERE EVENT='manual_review' as MR flag,
+          then CASE on final event: auto_approved, manual_review_approved,
+          manual_review_rejected, auto_rejected, discarded.
+          Source: FIVETRAN_DB.PROD_NOVO_API_PUBLIC.TRANSFER_EVENTS.
+
+      - name: ach_pull_decision
+        sql: "{CUBE}.ACH_PULL_DECISION"
+        type: string
+        title: ACH Pull Decision
+        description: >
+          Pre-computed decision outcome for inbound ACH pulls.
+          Logic: CASE WHEN APPROVED_DESCRIPTION IS NOT NULL → 'auto_approved';
+          WHEN 'Approved by admin%' → 'manual_review_approved';
+          WHEN REJECTED_DESCRIPTION NOT ILIKE 'automatically rejected%' → 'manual_review_rejected';
+          WHEN 'automatically rejected%' → 'auto_rejected'; else 'canceled'.
+          Source: METABASE_DB.PAYMENTS.PULL_FUNDS_REQUESTS.
+
+      - name: express_ach_flag
+        sql: "{CUBE}.EXPRESS_ACH_FLAG"
+        type: boolean
+        title: Express ACH
+        description: TRUE if this transfer was sent via Express ACH (faster settlement, fee charged).
+
+    measures:
+      - name: express_ach_revenue
+        sql: "{CUBE}.REVENUE_EXPRESS_ACH"
+        type: sum
+        title: Express ACH Revenue ($)
+        description: Total Express ACH fees collected. Fee charged per express transfer.
+
+      - name: ach_transfer_count
+        sql: "{CUBE}.TRANSFER_ID"
+        type: count_distinct
+        title: ACH Transfer Count (#)
+        description: Total number of ACH transfer events (push + pull combined).
+
+
+  - name: fact_domestic_wires
+    sql_table: "METABASE_DB.MART_BANKING.FACT_DOMESTIC_WIRES"
+    public: false
+    description: >
+      MART_BANKING — One row per domestic wire transfer.
+      Wire decision and status are pre-computed in dbt using the latest event per wire
+      (ROW_NUMBER OVER PARTITION BY DOMESTIC_WIRE_ID ORDER BY CREATED_AT DESC = 1).
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: domestic_wire_id
+        sql: "{CUBE}.DOMESTIC_WIRE_ID"
+        type: string
+        primary_key: true
+        title: Domestic Wire ID
+        description: UUID — primary key for the wire transfer.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: wire_date
+        sql: "{CUBE}.WIRE_DATE"
+        type: time
+        title: Wire Date
+        description: Date the wire was initiated.
+
+      - name: wire_status
+        sql: "{CUBE}.WIRE_STATUS"
+        type: string
+        title: Wire Status
+        description: >
+          Current wire status derived from the latest event.
+          Source: FIVETRAN_DB.PROD_NOVO_API_PUBLIC.DOMESTIC_WIRE_EVENTS (deduped to latest event).
+
+      - name: wire_decision
+        sql: "{CUBE}.WIRE_DECISION"
+        type: string
+        title: Wire Decision
+        description: >
+          Pre-computed underwriting decision. Logic from latest Sardine/admin event:
+          sardine_risk_engine_auto_approved → 'auto_approved';
+          manual_review_approved → 'manual_review_approved';
+          manual_review_rejected → 'manual_review_rejected';
+          auto_rejected → 'auto_rejected';
+          wire_marked_as_discarded → 'discarded'; else 'no_decision'.
+
+    measures:
+      - name: domestic_wire_revenue
+        sql: "{CUBE}.WIRE_FEE"
+        type: sum
+        title: Domestic Wire Revenue ($)
+        description: Total revenue from domestic wire fees charged to customers.
+
+      - name: wire_count
+        sql: "{CUBE}.DOMESTIC_WIRE_ID"
+        type: count_distinct
+        title: Domestic Wire Count (#)
+        description: Total number of domestic wire transfer events.
+
+
+  - name: fact_monthly_balances
+    sql_table: "METABASE_DB.MART_BANKING.FACT_MONTHLY_BALANCES"
+    public: false
+    description: >
+      MART_BANKING — One row per business per month. Periodic snapshot of balance metrics.
+      Build pattern: incremental monthly snapshot. Never overwrite prior periods.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: balance_month
+        sql: "{CUBE}.BALANCE_MONTH"
+        type: time
+        title: Balance Month
+        description: First day of the reporting month (date-trunc to month).
+
+    measures:
+      - name: avg_daily_balance_aggr_monthly
+        sql: "{CUBE}.AVG_DAILY_BALANCE_AGGR_MONTHLY"
+        type: avg
+        title: Average Monthly Balance (ADB) ($)
+        description: >
+          Average daily balance for the month, aggregated at the business level.
+          Source: PROD_DB.DATA.BALANCES_DAILY + PROD_DB.DATA.BALANCES_MONTHLY.
+          Used as the base for Float Revenue calculation.

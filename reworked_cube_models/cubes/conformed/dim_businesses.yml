@@ -1,0 +1,193 @@
+cubes:
+  - name: dim_businesses
+    sql_table: "METABASE_DB.CONFORMED.DIM_BUSINESSES"
+    public: false
+    description: >
+      Conformed dimension — one row per Novo business account.
+      The universal join key for all marts. Every fact table joins here via business_id.
+      Account status, lifecycle dates, fraud flags, and activity signals are stored here.
+      Build pattern: incremental SCD Type 1. ACCOUNT_STATUS uses SCD Type 2.
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: UUID — primary key for the business account. Universal join key across all marts.
+
+      - name: application_id
+        sql: "{CUBE}.APPLICATION_ID"
+        type: string
+        title: Application ID
+        description: FK to CONFORMED.DIM_APPLICATIONS — the originating onboarding application.
+
+      - name: email
+        sql: "{CUBE}.EMAIL"
+        type: string
+        title: Email
+        description: Primary business email. Primary join key for Customer Success data.
+
+      - name: account_status
+        sql: "{CUBE}.ACCOUNT_STATUS"
+        type: string
+        title: Account Status (Raw)
+        description: "Raw account status: active, suspended, frozen."
+
+      - name: customer_success_account_status
+        sql: "{CUBE}.CUSTOMER_SUCCESS_ACCOUNT_STATUS"
+        type: string
+        title: CS Account Status
+        description: >
+          9-level status hierarchy (highest priority wins):
+          1) Closed - Expensed Fraud, 2) Closed - Suspected Fraud, 3) Closed,
+          4) Delinquent, 5) Frozen, 6) Open - Active, 7) Open - Inactive,
+          8) Applicant, 9) Prospect.
+
+      - name: account_created_at
+        sql: "{CUBE}.ACCOUNT_CREATED_AT"
+        type: time
+        title: Account Created At
+        description: Timestamp when the account was opened (bank account number issued).
+
+      - name: account_opened_month
+        sql: "DATE_TRUNC('month', {CUBE}.ACCOUNT_CREATED_AT)"
+        type: time
+        title: Opened Account (OA) Cohort
+        description: >
+          Calendar month in which the account was opened.
+          Denominator for all cohort retention analysis.
+
+      - name: account_closed_at
+        sql: "{CUBE}.ACCOUNT_CLOSED_AT"
+        type: time
+        title: Account Closed At
+        description: Timestamp when the account was suspended. NULL if account is open.
+
+      - name: first_transaction_at
+        sql: "{CUBE}.FIRST_TRANSACTION_AT"
+        type: time
+        title: First Transaction At
+        description: Date of the first financial transaction on the account.
+
+      - name: last_transaction_at
+        sql: "{CUBE}.LAST_TRANSACTION_AT"
+        type: time
+        title: Last Transaction At
+        description: Date of the most recent financial transaction. Used for activity and churn measures.
+
+      - name: last_debit_card_transaction_at
+        sql: "{CUBE}.LAST_DEBIT_CARD_TRANSACTION_AT"
+        type: time
+        title: Last Debit Card Transaction At
+        description: Date of most recent debit card transaction. Used for Debit Card Active Account measure.
+
+      - name: last_credit_card_transaction_at
+        sql: "{CUBE}.LAST_CREDIT_CARD_TRANSACTION_AT"
+        type: time
+        title: Last Credit Card Transaction At
+        description: Date of most recent credit card transaction. Used for Credit Card Active Account measure.
+
+      - name: account_1k_funded_at
+        sql: "{CUBE}.ACCOUNT_1K_FUNDED_AT"
+        type: time
+        title: Account $1K Funded At
+        description: Timestamp when cumulative credits first reached $1,000.
+
+      - name: is_account_1k_funded
+        sql: "{CUBE}.IS_ACCOUNT_1K_FUNDED"
+        type: boolean
+        title: Is Account $1K Funded
+        description: TRUE if the account has received >= $1,000 in cumulative credits.
+
+      - name: is_account_inactive_60days
+        sql: "{CUBE}.IS_ACCOUNT_INACTIVE_60DAYS"
+        type: boolean
+        title: Is Account Inactive (60 Days)
+        description: TRUE if no financial transaction in the last 60 days.
+
+      - name: is_account_closed
+        sql: "{CUBE}.IS_ACCOUNT_CLOSED"
+        type: boolean
+        title: Is Account Closed
+        description: TRUE if ACCOUNT_STATUS = 'suspended'.
+
+      - name: is_account_closed_for_suspected_fraud
+        sql: "{CUBE}.IS_ACCOUNT_CLOSED_FOR_SUSPECTED_FRAUD"
+        type: boolean
+        title: Is Closed for Suspected Fraud
+        description: TRUE if account was suspended due to fraud suspicion.
+
+      - name: expensed_fraud_loss
+        sql: "{CUBE}.EXPENSED_FRAUD_LOSS"
+        type: number
+        title: Expensed Fraud Loss ($)
+        description: Dollar value of fraud loss expensed at the business level.
+
+      - name: delinquency_days_past_due
+        sql: "{CUBE}.DELINQUENCY_DAYS_PAST_DUE"
+        type: number
+        title: Delinquency Days Past Due
+        description: DPD sourced from credit product for Customer Success Delinquent status.
+
+    measures:
+      - name: opened_accounts
+        sql: "{CUBE}.BUSINESS_ID"
+        type: count_distinct
+        title: Opened Accounts (#)
+        description: >
+          Count of distinct businesses that have completed onboarding and been issued an account number.
+          Denominator for all cohort-based retention analysis.
+
+      - name: funded_accounts
+        sql: "CASE WHEN {CUBE}.IS_ACCOUNT_1K_FUNDED THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Funded Accounts (#)
+        description: Count of distinct businesses with >= $1,000 in cumulative credits received.
+
+      - name: active_accounts
+        sql: "CASE WHEN {CUBE}.ACCOUNT_STATUS = 'active' THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Active Accounts (DDA) (#)
+        description: >
+          Count of open accounts that remain active in the system. Includes dormant and $0 balance accounts.
+
+      - name: financially_active_accounts
+        sql: "CASE WHEN {CUBE}.ACCOUNT_STATUS = 'active' AND {CUBE}.LAST_TRANSACTION_AT >= CURRENT_DATE - 60 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Financially Active Accounts (#)
+        description: Open accounts with at least one financial transaction in the last 60 days.
+
+      - name: debit_card_active_accounts
+        sql: "CASE WHEN {CUBE}.LAST_DEBIT_CARD_TRANSACTION_AT >= CURRENT_DATE - 60 THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Debit Card Active Accounts (#)
+        description: Open accounts with at least one debit card transaction in the last 60 days.
+
+      - name: closed_accounts
+        sql: "CASE WHEN {CUBE}.ACCOUNT_STATUS = 'suspended' THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Closed Accounts (#)
+        description: Count of accounts with status = 'suspended'. Includes all closure reasons.
+
+      - name: inactive_accounts
+        sql: "CASE WHEN {CUBE}.IS_ACCOUNT_INACTIVE_60DAYS THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Inactive Accounts — Inactivity Churn (#)
+        description: Open accounts that have not had a financial transaction in the last 60 days.
+
+      - name: closure_churn
+        sql: "CASE WHEN {CUBE}.ACCOUNT_CLOSED_AT IS NOT NULL THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: Closure Churn (#)
+        description: Accounts that were active in the prior period and suspended in the current period.
+
+      - name: fraud_loss
+        sql: "{CUBE}.EXPENSED_FRAUD_LOSS"
+        type: sum
+        title: Fraud Loss ($)
+        description: Total expensed fraud loss at the business level.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

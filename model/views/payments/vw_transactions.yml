@@ -1,0 +1,19 @@
+views:
+  - name: vw_transactions
+    
+    cubes:
+
+      - join_path: transactions
+        prefix: false
+        includes:
+          # Dimensions
+          - transaction_at
+          - credit_or_debit
+          - medium
+          - derived_medium
+          - vvc_medium
+          - origination_type
+          # Measures
+          - gross_transactions
+          - gross_transaction_volume
+

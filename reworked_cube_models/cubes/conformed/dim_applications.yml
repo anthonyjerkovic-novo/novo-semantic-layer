@@ -1,0 +1,119 @@
+cubes:
+  - name: dim_applications
+    sql_table: "METABASE_DB.CONFORMED.DIM_APPLICATIONS"
+    public: false
+    description: >
+      Conformed dimension — one row per Novo onboarding application.
+      Source of acquisition channel attribution, business segmentation, and underwriting outcome.
+      Used as the join key between marketing acquisition metrics and business account data.
+
+    dimensions:
+      - name: application_id
+        sql: "{CUBE}.APPLICATION_ID"
+        type: string
+        primary_key: true
+        title: Application ID
+        description: UUID — primary key for the application.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES — populated after account is opened.
+
+      - name: application_created_at
+        sql: "{CUBE}.APPLICATION_CREATED_AT"
+        type: time
+        title: Application Created At
+        description: Timestamp when Step 1 (email + password) was completed. Marks application start.
+
+      - name: application_started_at
+        sql: "{CUBE}.APPLICATION_STARTED_AT"
+        type: time
+        title: Application Started At
+        description: Timestamp when the applicant started the onboarding flow.
+
+      - name: application_completed_at
+        sql: "{CUBE}.APPLICATION_COMPLETED_AT"
+        type: time
+        title: Application Completed At
+        description: Timestamp when all required steps were completed and application was e-signed.
+
+      - name: application_decision
+        sql: "{CUBE}.APPLICATION_DECISION"
+        type: string
+        title: Application Decision
+        description: >
+          Underwriting outcome. Logic:
+          IS_AUTO_APPROVED=1 → 'auto_approved';
+          IS_AUTO_DENIED=1 → 'auto_denied';
+          STATUS='account_opened' AND IS_STRAIGHT_THROUGH=1 → 'straight_through';
+          STATUS='account_opened' AND IS_STRAIGHT_THROUGH=0 → 'manual_approved';
+          STATUS='denied' AND IS_AUTO_DENIED=0 → 'manual_denied';
+          APPLICATION_COMPLETE_DATETIME IS NOT NULL → 'incomplete';
+          else 'abandoned'.
+
+      - name: application_status
+        sql: "{CUBE}.APPLICATION_STATUS"
+        type: string
+        title: Application Status (Raw)
+        description: Raw application status from the onboarding system.
+
+      - name: business_type
+        sql: "{CUBE}.BUSINESS_TYPE"
+        type: string
+        title: Business Type
+        description: "Business incorporation type: Sole Proprietorship, LLC, Corporation, Partnership."
+
+      - name: b2b_services_flag
+        sql: "{CUBE}.B2B_SERVICES_FLAG"
+        type: string
+        title: B2B Services
+        description: Indicates whether the business provides B2B services.
+
+      - name: business_industry_category
+        sql: "{CUBE}.BUSINESS_INDUSTRY_CATEGORY"
+        type: string
+        title: Industry Category Name
+        description: 6-digit NAICS industry category name. Self-reported at application.
+
+      - name: business_industry_name
+        sql: "{CUBE}.BUSINESS_INDUSTRY_NAME"
+        type: string
+        title: Industry Name
+        description: 8-digit NAICS industry name. Source TBD — currently no Gold home.
+
+      - name: business_establishment_date
+        sql: "{CUBE}.BUSINESS_ESTABLISHMENT_DATE"
+        type: time
+        title: Business Establishment Date
+        description: Self-reported founding date of the business.
+
+      - name: application_channel_derived
+        sql: "{CUBE}.APPLICATION_CHANNEL_DERIVED"
+        type: string
+        title: Acquisition Channel
+        description: >
+          Last-touch attribution channel derived from UTM and referrer data.
+          Values: paid_search, paid_social, organic_direct, bd_affiliate, referral.
+
+      - name: is_auto_approved
+        sql: "{CUBE}.IS_AUTO_APPROVED"
+        type: number
+        title: Is Auto Approved
+        description: 1 if the application was automatically approved with no manual review.
+
+      - name: is_auto_denied
+        sql: "{CUBE}.IS_AUTO_DENIED"
+        type: number
+        title: Is Auto Denied
+        description: 1 if the application was automatically denied.
+
+      - name: is_straight_through
+        sql: "{CUBE}.IS_STRAIGHT_THROUGH"
+        type: number
+        title: Is Straight Through
+        description: 1 if approved without any manual review step.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization

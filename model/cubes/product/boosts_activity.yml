@@ -1,0 +1,58 @@
+cubes:
+  - name: boosts_activity
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_PROVISIONAL_CREDITS_ACTIVITY"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: provisional_credit_id
+        sql: "{CUBE}.provisional_credit_id"
+        type: string
+        primary_key: true
+        title: Provisional Credit ID
+        description: Unique identifier for the provisional credit transactions
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: boost_created_at
+        sql: "{CUBE}.boost_created_at"
+        type: time
+        title: Boost Created At
+        description: Timestamp of the boost transaction
+
+      - name: boost_amount
+        sql: "{CUBE}.boost_amount"
+        type: number
+        title: Boost Amount
+        description: Amount of the boost transaction
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.business_specific_ordinal"
+        type: number
+        title: Business Specific Ordinal
+        description: Sequential number of boost transactions for each business
+
+    measures:
+      - name: boost_attach
+        sql: "CASE WHEN {CUBE}.business_specific_ordinal = 1 THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Boost Attach (#)
+        description: Count of distinct businesses that had their first boost transactions in a given time period.
+
+      - name: boost_active
+        sql: "{CUBE}.business_id"
+        type: count_distinct
+        title: Boost Active (#)
+        description: Count of distinct businesses that had any boost transaction in a given time period.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

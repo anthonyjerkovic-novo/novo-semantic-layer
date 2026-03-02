@@ -1,0 +1,13 @@
+views:
+  - name: vw_funding_funnel_cohort_based
+    
+    cubes:
+
+      - join_path: funding_funnel_cohort_based
+        prefix: false
+        includes:
+          # dimensions
+          - invitation_created_at
+          # measures
+          - invitations_sent_mca
+          - offers_accepted_mca

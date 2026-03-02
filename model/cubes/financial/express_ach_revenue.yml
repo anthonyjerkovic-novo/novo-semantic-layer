@@ -1,0 +1,41 @@
+cubes:
+  - name: express_ach_revenue
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_TRANSACTIONS"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: transaction_id
+        sql: "{CUBE}.transaction_id"
+        type: string
+        primary_key: true
+        title: Transaction ID
+        description: Unique identifier for the transaction
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: transaction_at
+        sql: "{CUBE}.transaction_at"
+        type: time
+        primary_key: true
+        title: Transaction Date
+        description: Date on which the transaction occurred
+
+    measures:
+      - name: express_ach_revenue
+        sql: "ABS({CUBE}.express_ach_fee)"
+        type: sum
+        title: Express ACH Revenue ($)
+        description: Revenue in USD generated from fees for usage of express ACH.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

@@ -1,0 +1,23 @@
+views:
+  - name: vw_float_revenue
+    
+    cubes:
+
+      - join_path: float_revenue
+        prefix: false
+        includes:
+          # dimensions
+          - month
+          # measures
+          - float_revenue_approximated
+
+      - join_path: float_revenue.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

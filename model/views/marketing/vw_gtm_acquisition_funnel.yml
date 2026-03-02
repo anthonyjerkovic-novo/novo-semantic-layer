@@ -1,0 +1,17 @@
+views:
+  - name: vw_gtm_acquisition_funnel
+    
+    cubes:
+
+      - join_path: gtm_acquisition_funnel
+        prefix: false
+        includes:
+          # dimensions
+          - day
+          # measures
+          - impressions
+          - traffic
+          - clicks
+          - applications_started
+          - applications_completed
+          - spend

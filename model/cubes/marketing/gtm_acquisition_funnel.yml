@@ -1,0 +1,53 @@
+cubes:
+  - name: gtm_acquisition_funnel
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_GTM_ACQUISITION_FUNNEL"
+    public: false
+
+    dimensions:
+      - name: day
+        sql: "{CUBE}.day"
+        type: time
+        primary_key: true
+        title: Date
+        description: Date of the funnel metrics
+
+    measures:
+      - name: impressions
+        sql: "{CUBE}.total_impressions"
+        type: sum
+        title: Impressions (#)
+        description: The number of times an ad is displayed on a user screen, regardless of whether the user interacts with it. 
+
+      - name: traffic
+        sql: "{CUBE}.total_traffic"
+        type: sum
+        title: Traffic (#)
+        description: The number of users who visit a website or specific landing page.
+
+      - name: clicks
+        sql: "{CUBE}.total_clicks"
+        type: sum
+        title: Clicks (#)
+        description: The number of times Get started is clicked on the Novo homepage.
+
+      - name: applications_started
+        sql: "{CUBE}.applications_started"
+        type: sum
+        title: Started Applications (#)
+        description: An application is started when an applicant completes step 1 of onboarding (i.e. submit their email and create a password)
+
+      - name: applications_completed
+        sql: "{CUBE}.applications_completed"
+        type: sum
+        title: Completed Applications (#)
+        description: An application is completed when an applicant finishes all the required steps in onboarding and e-signs their application
+
+      - name: spend
+        sql: "{CUBE}.daily_spend"
+        type: sum
+        title: Spend ($)
+        description: Total spend in USD on paid advertising, inclusive of top of funnel, brand awareness, and direct response testing.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

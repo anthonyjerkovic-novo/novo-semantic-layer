@@ -1,0 +1,64 @@
+cubes:
+  - name: reserves_activity
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_RESERVES_ACTIVITY"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: reserve_activity_id
+        sql: "{CUBE}.reserve_activity_id"
+        type: string
+        primary_key: true
+        title: Reserve Activity ID
+        description: Unique identifier for the reserve activity
+
+      - name: reserve_id
+        sql: "{CUBE}.reserve_id"
+        type: string
+        title: Reserve ID
+        description: Unique identifier for the reserve
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: reserve_activity_at
+        sql: "{CUBE}.reserve_activity_at"
+        type: time
+        title: Reserve Activity At
+        description: Timestamp of the reserve activity
+
+      - name: activity_type
+        sql: "{CUBE}.activity_type"
+        type: string
+        title: Activity Type
+        description: Type of reserve activity (RESERVE_CREATION or RESERVE_TRANSACTION)
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.business_specific_ordinal"
+        type: number
+        title: Business Specific Ordinal
+        description: Sequential number of reserve activities for each business
+
+    measures:
+      - name: reserves_attach
+        sql: "CASE WHEN {CUBE}.business_specific_ordinal = 1 AND {CUBE}.activity_type = 'RESERVE_CREATION' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Reserves Attach (#)
+        description: Count of distinct businesses that had their first reserve activity in a given time period.
+
+      - name: reserves_active
+        sql: "{CUBE}.business_id"
+        type: count_distinct
+        title: Reserves Active (#)
+        description: Count of distinct businesses that had any reserve activity in a given time period.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

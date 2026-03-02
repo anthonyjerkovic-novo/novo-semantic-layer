@@ -1,0 +1,59 @@
+cubes:
+  - name: ltv_components_18m
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_LTV_COMPONENTS_MONTHLY"
+    public: false
+
+    joins:
+      - name: applications
+        sql: "{CUBE}.application_id = {applications}.application_id"
+        relationship: one_to_one
+
+    dimensions:
+      - name: ltv_components_18m_surrogate_key
+        sql: "SHA2(CONCAT({CUBE}.ltv_type, {CUBE}.business_id))"
+        type: string
+        primary_key: true
+
+      - name: ltv_type
+        sql: "{CUBE}.ltv_type"
+        type: string
+        title: LTV Type
+        description: Type of LTV calculation (one of M1_LTV or M3_LTV)
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: application_id
+        sql: "{CUBE}.application_id"
+        type: string
+        title: Application ID
+        description: Unique identifier for the application
+
+      # dimensions from applications cube
+      - name: acquisition_channel
+        sql: "{applications.acquisition_channel}"
+        type: string
+
+      - name: application_decision
+        sql: "{applications.application_decision}"
+        type: string
+
+    measures:
+      - name: ltv_18m_m1
+        sql: "CASE WHEN {CUBE}.ltv_type = 'M1_LTV' THEN {CUBE}.contribution END"
+        type: sum
+        title: 18M M1 LTV ($)
+        description: The standard M1 LTV, truncated to 18 statements.
+
+      - name: ltv_18m_m3
+        sql: "CASE WHEN {CUBE}.ltv_type = 'M3_LTV' THEN {CUBE}.contribution END"
+        type: sum
+        title: 18M M3 LTV ($)
+        description: The standard M3 LTV, truncated to 18 statements.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

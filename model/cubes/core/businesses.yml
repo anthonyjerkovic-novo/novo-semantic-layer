@@ -1,0 +1,226 @@
+cubes:
+  - name: businesses
+    sql_table: "DEV_DB.DEV_ANWAR.DIM_BUSINESSES"
+    public: false
+
+    joins:
+      - name: applications
+        sql: "{CUBE}.application_id = {applications}.application_id"
+        relationship: one_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: application_id
+        sql: "{CUBE}.application_id"
+        type: string
+        title: Application ID
+        description: Application identifier associated with the business
+
+      - name: fraud_loss_transaction_id
+        sql: "{CUBE}.fraud_loss_transaction_id"
+        type: string
+        title: Fraud Loss Transaction ID
+        description: Transaction ID related to fraud losses
+
+      - name: email
+        sql: "{CUBE}.email"
+        type: string
+        title: Business Email
+        description: Email address associated with the business
+
+      - name: account_created_at
+        sql: "{CUBE}.account_created_at"
+        type: time
+        title: Account Created At
+        description: Timestamp when the business account was created
+
+      - name: opened_account_cohort
+        sql: "DATE(DATE_TRUNC('MONTH', {CUBE}.account_created_at))"
+        type: time
+        title: Opened Account (OA) Cohort
+        description: Calendar month cohort when the business account was opened (bank account number issued).
+
+      - name: account_closed_at
+        sql: "{CUBE}.account_closed_at"
+        type: time
+        title: Account Closed At
+        description: Timestamp when the business account was closed
+
+      - name: first_transaction_at
+        sql: "{CUBE}.first_transaction_at"
+        type: time
+        title: First Transaction At
+        description: Timestamp of the first transaction for the business
+
+      - name: last_transaction_at
+        sql: "{CUBE}.last_transaction_at"
+        type: time
+        title: Last Transaction At
+        description: Timestamp of the most recent transaction
+
+      - name: last_debit_card_transaction_at
+        sql: "{CUBE}.last_debit_card_transaction_at"
+        type: time
+        title: Last Debit Card Transaction At
+        description: Timestamp of the most recent debit card transaction
+
+      - name: last_credit_card_transaction_at
+        sql: "{CUBE}.last_credit_card_transaction_at"
+        type: time
+        title: Last Credit Card Transaction At
+        description: Timestamp of the most recent credit card transaction
+
+      - name: account_1k_funded_at
+        sql: "{CUBE}.account_1k_funded_at"
+        type: time
+        title: Account 1K Funded At
+        description: Timestamp when the account reached $1K funding
+
+      - name: is_account_1k_funded
+        sql: "{CUBE}.is_account_1k_funded"
+        type: boolean
+        title: Is Account 1K Funded
+        description: Whether the account has been funded with at least $1K
+
+      - name: is_account_inactive_60days
+        sql: "{CUBE}.is_account_inactive_60days"
+        type: boolean
+        title: Is Account Inactive (60+ Days)
+        description: Whether the account has been inactive for 60+ days
+
+      - name: is_account_closed
+        sql: "{CUBE}.is_account_closed"
+        type: boolean
+        title: Is Account Closed
+        description: Whether the account is closed
+
+      - name: is_account_closed_for_suspected_fraud
+        sql: "{CUBE}.is_account_closed_for_suspected_fraud"
+        type: boolean
+        title: Is Account Closed for Suspected Fraud
+        description: Whether the account was closed due to suspected fraud
+
+      - name: is_email_in_users
+        sql: "{CUBE}.is_email_in_users"
+        type: boolean
+        title: Is Email in Users Table
+        description: Whether the email exists in the users table
+
+      - name: is_email_in_applications
+        sql: "{CUBE}.is_email_in_applications"
+        type: boolean
+        title: Is Email in Applications Table
+        description: Whether the email exists in the applications table
+
+      - name: business_type
+        sql: "{applications.business_type}"
+        type: string
+        title: Business Type
+        description: Business incorporation status (Corporation, LLC, Sole Proprietorship, Partnership)
+
+      - name: b2b_services_flag
+        sql: "{applications.b2b_services_flag}"
+        type: string
+        title: B2B Services Flag
+        description: Custom logic to to parse industry categories into B2B vs. non-B2B (i.e. product sellers, B2C companies)
+
+      - name: business_industry_category
+        sql: "{applications.business_industry_category}"
+        type: string
+        title: Business Industry Category
+        description: Industry category of the business
+
+      - name: tenure
+        sql: "DATEDIFF(day, {CUBE}.account_created_at, CURRENT_DATE)"
+        type: number
+        title: Tenure with Novo (Days)
+        description: Number of days from account creation date until today
+
+      - name: age_of_business
+        sql: "DATEDIFF(day, {applications.business_establishment_date}, CURRENT_DATE)"
+        type: number
+        title: Age of Business (Days)
+        description: Number of days from business establishment date until today
+
+      - name: delinquency_days_past_due
+        sql: "{CUBE}.delinquency_days_past_due"
+        type: number
+        title: Delinquency Days Past Due
+        description: Number of days past due for delinquent accounts
+
+      - name: account_status
+        sql: "{CUBE}.account_status"
+        type: string
+        title: Account Status
+        description: Current status of the business account
+
+      - name: customer_success_account_status
+        sql: "{CUBE}.customer_success_account_status"
+        type: string
+        title: Customer Success Account Status
+        description: Customer success categorization of account status
+
+    measures:
+      - name: opened_accounts
+        sql: "{CUBE}.business_id"
+        type: count
+        title: Opened Accounts (#)
+        description: An opened account is when a user completes application process, gets approved, and an account number is issued, creating a new row in the businesses table.
+
+      - name: active_accounts
+        sql: "CASE WHEN {CUBE}.account_status = 'active' THEN business_id END"
+        type: count
+        title: Active Accounts (#)
+        description: Opened account that remains open in our system (not closed, frozen, or suspended). Includes dormant and $0 balance accounts.
+
+      - name: funded_1k_accounts
+        sql: "CASE WHEN {CUBE}.is_account_1k_funded = TRUE THEN 1 END"
+        type: count
+        title: Funded ($1K) Accounts (#)
+        description: Number of businesses funded with $1K or more
+
+      - name: financially_active_accounts
+        sql: "CASE WHEN {CUBE}.account_status = 'active' AND {CUBE}.last_transaction_at >= DATEADD(day, -60, CURRENT_DATE) THEN {CUBE}.business_id END"
+        type: count
+        title: Financially Active Accounts (#)
+        description: Open accounts with at least one financial transaction in the last 60 days. Can be a debit or credit transaction.
+
+      - name: debit_card_active_accounts
+        sql: "CASE WHEN {CUBE}.account_status = 'active' AND {CUBE}.last_debit_card_transaction_at >= DATEADD(day, -60, CURRENT_DATE) THEN {CUBE}.business_id END"
+        type: count
+        title: Debit Card Active Accounts (#)
+        description: Open accounts with at least one debit card transaction in the last 60 days. Can be a debit or credit transaction.
+
+      - name: credit_card_active_accounts
+        sql: "CASE WHEN {CUBE}.account_status = 'active' AND {CUBE}.last_credit_card_transaction_at >= DATEADD(day, -60, CURRENT_DATE) THEN {CUBE}.business_id END"
+        type: count
+        title: Credit Card Active Accounts (#)
+        description: Open accounts with at least one credit card transaction in the last 60 days. Can be a debit or credit transaction.
+
+      - name: closed_accounts
+        sql: "CASE WHEN {CUBE}.account_status = 'suspended' THEN business_id END"
+        type: count
+        title: Closed Accounts (#)
+        description: Accounts that has been suspended in our system. Their account number is no longer functional and have their status as 'suspended'.
+
+      - name: inactive_accounts
+        sql: "CASE WHEN {CUBE}.is_account_inactive_60days = TRUE THEN 1 END"
+        type: count
+        title: Inactive Businesses 60+ Days (#)
+        description: Accounts that have not been financially active in the last 60 days.
+
+      - name: expensed_fraud_loss
+        sql: "{CUBE}.expensed_fraud_loss"
+        type: sum
+        title: Expensed Fraud Loss ($)
+        description: Total expensed fraud loss amount
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

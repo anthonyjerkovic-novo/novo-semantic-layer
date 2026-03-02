@@ -1,0 +1,24 @@
+views:
+  - name: vw_reserves_activity
+    
+    cubes:
+
+      - join_path: reserves_activity
+        prefix: false
+        includes:
+          # dimensions
+          - reserve_activity_at
+          # measures
+          - reserves_attach
+          - reserves_active
+
+      - join_path: reserves_activity.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

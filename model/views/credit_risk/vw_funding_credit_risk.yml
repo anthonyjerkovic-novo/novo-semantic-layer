@@ -1,0 +1,16 @@
+views:
+  - name: vw_funding_credit_risk
+    
+    cubes:
+
+      - join_path: funding_credit_risk
+        prefix: false
+        includes:
+          # dimensions
+          - snap_date
+          - open_cohort_mca
+          - delinquency_bin_mca
+          # measures
+          - outstanding_balance_mca
+          - current_credit_limit_mca
+          - payments_made_mca

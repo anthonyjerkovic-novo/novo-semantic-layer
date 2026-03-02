@@ -1,0 +1,22 @@
+views:
+  - name: vw_lifetime_values
+    
+    cubes:
+
+      - join_path: lifetime_values
+        prefix: false
+        includes:
+          # measures
+          - contribution_ltv_m1
+          - contribution_ltv_m3
+
+      - join_path: lifetime_values.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

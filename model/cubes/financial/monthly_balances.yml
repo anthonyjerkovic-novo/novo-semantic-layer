@@ -1,0 +1,40 @@
+cubes:
+  - name: monthly_balances
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_MONTHLY_BALANCES"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: balance_month
+        sql: "{CUBE}.balance_month"
+        type: time
+        primary_key: true
+        title: Month
+        description: Month for the balance data
+
+    measures:
+      - name: month_end_balance
+        sql: "{CUBE}.month_end_balance"
+        type: sum
+        title: Month End Balance ($)
+        description: Balance at the end of the month.
+
+      - name: avg_daily_balance_aggr_monthly
+        sql: "{CUBE}.avg_daily_balance_aggr_monthly"
+        type: sum
+        title: Average Daily Balance Aggregated Monthly ($)
+        description: Average daily balances aggregated monthly.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

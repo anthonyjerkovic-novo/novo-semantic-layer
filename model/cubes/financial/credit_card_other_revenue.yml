@@ -1,0 +1,40 @@
+cubes:
+  - name: credit_card_other_revenue
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_CREDIT_CARD_OTHER_FEES"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: credit_card_mgmt_transaction_id
+        sql: "{CUBE}.credit_card_mgmt_transaction_id"
+        type: string
+        primary_key: true
+        title: Credit Card Management Transaction ID
+        description: Unique identifier for the credit card management transaction
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: created_at
+        sql: "{CUBE}.created_at"
+        type: time
+        title: Created At
+        description: Date and time when the transaction was created
+
+    measures:
+      - name: credit_card_other_fee_revenue
+        sql: "{CUBE}.credit_card_mgmt_fee"
+        type: sum
+        title: Credit Card Other Fee Revenue ($)
+        description: Revenue in USD generated from credit card other fees (foreign transaction fees and returned payment fees)
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started 

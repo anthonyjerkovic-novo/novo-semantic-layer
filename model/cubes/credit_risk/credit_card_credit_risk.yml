@@ -1,0 +1,67 @@
+cubes:
+  - name: credit_card_credit_risk
+    sql: SELECT * FROM DEV_DB.DEV_ANWAR.FACT_LOAN_TAPE_HISTORY WHERE period_type = 'DAILY'
+    public: true
+
+    dimensions:
+
+      - name: credit_risk_cc_surrogate_key
+        sql: "SHA2(CONCAT(CAST({CUBE}.statement_date AS VARCHAR), {CUBE}.business_id))"
+        type: string
+        primary_key: true
+        title: Credit Risk CC Surrogate Key
+        description: Surrogate key for the credit risk cc cube
+
+      - name: statement_date
+        sql: "{CUBE}.statement_date"
+        type: time
+        title: Statement Date
+        description: Date of the credit card statement
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: credit_risk_bin_cc
+        sql: "{CUBE}.credit_risk_bin"
+        type: string
+        title: Model Risk Bin (CC)
+        description: A FICO-based system for rank ordering the credit worthiness/risk of a given customer from 1 to 5; 1 being the highest risk and 5 being the lowest risk group.
+
+      - name: account_approval_date_cc
+        sql: "{CUBE}.account_approval_date"
+        type: time
+        title: Open Cohort (CC)
+        description: Date when a customer was originally underwritten (i.e. approved for a credit card).
+
+      - name: line_assignment_segment_cc
+        sql: "{CUBE}.line_assignment_segment"
+        type: string
+        title: Line Assignment Segment (CC)
+        description: A rank ordering for initial credit limit assignment for a given model risk bin, from A to C. A is the lowest initial credit limit, C is the highest.
+
+      - name: delinquency_bin_cc
+        sql: "{CUBE}.delinquency_bin"
+        type: string
+        title: Delinquency Bin (CC)
+        description: Bucketed range of days describing the severity of deliquency of a given account. Other than 0 days delinquent, always grouped in 30 day increments.
+
+      - name: revolve_status_cc
+        sql: "{CUBE}.revolve_status"
+        type: string
+        title: Revolve Status (CC)
+        description: Denotes whether or not a credit card customer is currently accruing interest on their balance. Transactors are customers who pay balance in full, and revolvers are those who are accruing interest.
+
+    measures:
+
+      - name: payments_made_cc
+        sql: "{CUBE}.day_payments"
+        type: sum
+        title: Payments Made (CC) ($)
+        description: Amount in USD paid against a credit card (under a standard/BAU payment plan).
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

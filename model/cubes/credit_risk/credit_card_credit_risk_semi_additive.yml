@@ -1,0 +1,111 @@
+# CRITICAL INSTRUCTION FOR CONVERSATIONAL AI:
+# This cube contains SEMI-ADDITIVE measures (outstanding_balance_cc, current_credit_limit_cc, utilization_cc)
+# that represent point-in-time snapshots and CANNOT be summed across time periods.
+#
+# MANDATORY FILTERING REQUIREMENTS:
+# 1. The conversational AI MUST ALWAYS include a filter on the 'period_type' dimension when querying this cube
+# 2. Available period_type values: 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY'
+# 3. The period_type filter MUST match time granularity requested by the user:
+#    - For daily analysis: period_type = 'DAILY'
+#    - For weekly analysis: period_type = 'WEEKLY' 
+#    - For monthly analysis: period_type = 'MONTHLY'
+#    - For quarterly analysis: period_type = 'QUARTERLY'
+#
+# BEHAVIOR REQUIREMENTS:
+# - If user requests a specific time grain (daily/weekly/monthly/quarterly), automatically apply the corresponding period_type filter
+# - If user does NOT specify a time period, the AI MUST ask the user to choose a time period before executing any query
+# - NEVER run queries against this cube without a period_type filter - this will produce incorrect results
+# - The underlying table contains pre-aggregated rows for each period type to ensure correct semi-additive calculations
+#
+# EXAMPLE CORRECT USAGE:
+# User: "Show me monthly outstanding balance for July 2024"
+# AI should filter: period_type = 'MONTHLY' AND statement_date = last day of July 2024
+#
+# EXAMPLE INCORRECT USAGE (DO NOT DO THIS):
+# User: "Show me outstanding balance for July 2024" 
+# AI should NOT run query without asking: "What time granularity would you like - daily, weekly, monthly, or quarterly?"
+
+cubes:
+  - name: credit_card_credit_risk_semi_additive
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_LOAN_TAPE_HISTORY"
+    public: true
+
+    dimensions:
+
+      - name: credit_risk_sa_cc_surrogate_key
+        sql: "SHA2(CONCAT(CAST({CUBE}.statement_date AS VARCHAR), {CUBE}.business_id))"
+        type: string
+        primary_key: true
+        title: Credit Risk Semi Additive CC Surrogate Key
+        description: Surrogate key for the credit risk cc cube
+
+      - name: period_type
+        sql: "{CUBE}.period_type"
+        type: string
+        title: Period Type
+        description: The time granularity of data. It is mandatory to choose a period type to correctly compute the semi-additive measures in this cube.
+
+      - name: statement_date
+        sql: "{CUBE}.statement_date"
+        type: time
+        title: Statement Date
+        description: Date of the credit card statement
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: credit_risk_bin_cc
+        sql: "{CUBE}.credit_risk_bin"
+        type: string
+        title: Model Risk Bin (CC)
+        description: A FICO-based system for rank ordering the credit worthiness/risk of a given customer from 1 to 5; 1 being the highest risk and 5 being the lowest risk group.
+
+      - name: account_approval_date_cc
+        sql: "{CUBE}.account_approval_date"
+        type: time
+        title: Open Cohort (CC)
+        description: Date when a customer was originally underwritten (i.e. approved for a credit card).
+
+      - name: line_assignment_segment_cc
+        sql: "{CUBE}.line_assignment_segment"
+        type: string
+        title: Line Assignment Segment (CC)
+        description: A rank ordering for initial credit limit assignment for a given model risk bin, from A to C. A is the lowest initial credit limit, C is the highest.
+
+      - name: delinquency_bin_cc
+        sql: "{CUBE}.delinquency_bin"
+        type: string
+        title: Delinquency Bin (CC)
+        description: Bucketed range of days describing the severity of deliquency of a given account. Other than 0 days delinquent, always grouped in 30 day increments.
+
+      - name: revolve_status_cc
+        sql: "{CUBE}.revolve_status"
+        type: string
+        title: Revolve Status (CC)
+        description: Denotes whether or not a credit card customer is currently accruing interest on their balance. Transactors are customers who pay balance in full, and revolvers are those who are accruing interest.
+
+    measures:
+      - name: outstanding_balance_cc
+        sql: "{CUBE}.outstanding_balance"
+        type: sum
+        title: Outstanding Balance (CC) ($)
+        description: Total outstanding balance in USD currently owed on credit card accounts.
+
+      - name: current_credit_limit_cc
+        sql: "{CUBE}.credit_limit"
+        type: sum
+        title: Exposure (Current CC Credit Limit) ($)
+        description: Highest amount possible to draw down (exposure) in USD.
+
+      - name: utilization_cc
+        sql: "1.0 * {outstanding_balance_cc} / NULLIF({current_credit_limit_cc}, 0)"
+        type: number
+        title: Utilization (CC) (%)
+        description: The amount of money a customer has drawn from their credit limit, represented as the ratio of Outstanding Balance to Current Credit Limit.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

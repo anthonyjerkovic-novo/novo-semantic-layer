@@ -1,0 +1,58 @@
+cubes:
+  - name: credit_card_primary_revenue
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_LOAN_TAPE_HISTORY"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: credit_card_primary_revenue_surrogate_key
+        sql: "SHA2(CONCAT(CAST({CUBE}.statement_date AS VARCHAR), {CUBE}.business_id))"
+        type: string
+        primary_key: true
+        title: Credit Card Primary Revenue Surrogate Key
+        description: Concatenation of statement_date and business_id as a unique surrogate key
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: statement_date
+        sql: "{CUBE}.statement_date"
+        type: time
+        title: Statement Date
+        description: Date of the loan tape statement
+
+      - name: cc_days_past_due
+        sql: "{CUBE}.days_past_due"
+        type: number
+        title: Days Past Due
+        description: Number of days the loan payment is past due
+
+    measures:
+      - name: credit_card_interest_revenue
+        sql: "{CUBE}.payment_allocated_interest"
+        type: sum
+        title: Credit Card Interest Revenue ($)
+        description: The revenue generated from interest charged on credit card balances.
+
+      - name: credit_card_late_fee_revenue
+        sql: "{CUBE}.payment_allocated_fees"
+        type: sum
+        title: Credit Card Late Fee Revenue ($)
+        description: The revenue generated from late fee charges on credit card balances.
+
+      - name: credit_card_charge_off_loss_guco
+        sql: "CASE WHEN days_past_due = 180 THEN {CUBE}.past_statements_principal END"
+        type: sum
+        title: Credit Card Charge Off Loss (GUCO) ($)
+        description: Amount in USD of charged off principal credit card balances
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

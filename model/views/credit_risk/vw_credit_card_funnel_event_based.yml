@@ -1,0 +1,15 @@
+views:
+  - name: vw_credit_card_funnel_event_based
+    
+    cubes:
+
+      - join_path: credit_card_funnel_event_based
+        prefix: false
+        includes:
+          # dimensions
+          - stage_timestamp
+          # measures
+          - invitations_sent
+          - applications_submitted
+          - applications_approved
+          - applications_denied

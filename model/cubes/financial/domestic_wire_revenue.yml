@@ -1,0 +1,40 @@
+cubes:
+  - name: domestic_wire_revenue
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_DOMESTIC_WIRES"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: domestic_wire_id
+        sql: "{CUBE}.domestic_wire_id"
+        type: string
+        primary_key: true
+        title: Domestic Wire ID
+        description: Unique identifier for the domestic wire transaction
+
+      - name: wire_created_at
+        sql: "{CUBE}.wire_created_at"
+        type: time
+        title: Wire Created At
+        description: Timestamp when the wire transfer was created
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+    measures:
+      - name: domestic_wire_revenue
+        sql: "{CUBE}.wire_fee"
+        type: sum
+        title: Domestic Wire Revenue ($)
+        description: Revenue in USD generated from domestic wire transfer fees
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started 

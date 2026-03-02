@@ -1,0 +1,13 @@
+views:
+  - name: vw_expected_payback
+    
+    cubes:
+
+      - join_path: expected_payback
+        prefix: false
+        includes:
+          # dimensions
+          - acquisition_channel
+          - application_decision
+          # measures
+          - e18m_net_income

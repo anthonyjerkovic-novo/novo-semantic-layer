@@ -1,0 +1,52 @@
+cubes:
+  - name: total_revenue
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_TOTAL_REVENUE"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: total_revenue_surrogate_key
+        sql: "SHA2(CONCAT(CAST({CUBE}.reporting_month AS VARCHAR), {CUBE}.business_id))"
+        type: string
+        primary_key: true
+        title: Total Revenue Surrogate Key
+        description: Concatenation of reporting_month and business_id as a unique surrogate key
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: reporting_month
+        sql: "{CUBE}.reporting_month"
+        type: time
+        title: Reporting Month
+        description: Month for which the revenue is reported
+
+    measures:
+      - name: revenue_excluding_interchange
+        sql: "COALESCE({CUBE}.float_revenue_approximated, 0) + COALESCE({CUBE}.total_factor_fee_collected, 0) + COALESCE({CUBE}.total_late_fee_collected, 0) + COALESCE({CUBE}.payment_allocated_fees, 0) + COALESCE({CUBE}.payment_allocated_interest, 0) + COALESCE({CUBE}.credit_card_mgmt_fee, 0) + COALESCE({CUBE}.express_ach_fee, 0) + COALESCE({CUBE}.wire_fee, 0)"
+        type: sum
+        title: Total Revenue (Excluding Interchange) ($)
+        description: Sum of all revenue items (excluding interchange) in USD including float revenue, MCA revenue, credit card revenue, express ACH fees, and wire fees.
+
+      - name: expenses
+        sql: "COALESCE({CUBE}.cost_to_open_cogs, 0) + COALESCE({CUBE}.cost_to_run_cogs, 0) + COALESCE({CUBE}.onboarding_costs, 0) + COALESCE({CUBE}.interchange_expenses_cogs, 0) + COALESCE({CUBE}.atm_reimbursement, 0) + COALESCE({CUBE}.mca_charge_off_loss_guco, 0) + COALESCE({CUBE}.credit_card_charge_off_loss_guco, 0)"
+        type: sum
+        title: Total Expenses ($)
+        description: Sum of all expense items including cost to open COGS, cost to run COGS, onboarding costs, interchange expenses, ATM reimbursement, MCA charge off loss, and credit card charge off loss.
+
+      - name: marginal_net_income
+        sql: "{revenue_excluding_interchange} - {expenses}"
+        type: number
+        title: Marginal Net Income ($)
+        description: "Total Revenue Excluding Interchange less the following expenses: Cost to Open (COGS), Cost to Run (COGS), Interchange Expenses (COGS), ATM Reimbursement, Onboarding Costs, MCA Charge Off Loss (GUCO), and Credit Card Charge Off Loss (GUCO). Does not account for marketing spend. Also known as Contribution Margin."
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

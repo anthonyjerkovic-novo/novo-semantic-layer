@@ -1,0 +1,24 @@
+views:
+  - name: vw_zendesk_tickets
+    
+    cubes:
+
+      - join_path: zendesk_tickets
+        prefix: false
+        includes:
+          # dimensions
+          - created_channel
+          - ticket_created_at
+          # measures
+          - contact_volume
+          - csat_score
+          - time_to_first_reply_calendar_hours
+          - time_to_first_reply_business_hours
+          - time_to_final_resolution_calendar_hours
+          - time_to_final_resolution_business_hours
+
+      - join_path: zendesk_tickets.businesses
+        prefix: false
+        includes:
+          # dimensions
+          - customer_success_account_status

@@ -1,0 +1,47 @@
+cubes:
+  - name: lithic_settlement_daily
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_LITHIC_SETTLEMENT_DAILY"
+    public: false
+
+    dimensions:
+      - name: report_date
+        sql: "{CUBE}.report_date"
+        type: time
+        primary_key: true
+        title: Report Date
+        description: Date of the settlement report
+
+    measures:
+      - name: interchange_eligible_spend_cc
+        sql: "{CUBE}.transactions_gross_amount_cc"
+        type: sum
+        title: Interchange Eligible Spend (Credit Card) ($)
+        description: Amount of credit card spend in USD on which interchange revenue can be collected.
+
+      - name: interchange_revenue_cc
+        sql: "{CUBE}.interchange_gross_amount_cc"
+        type: sum
+        title: Interchange Revenue (Credit Card) ($)
+        description: Revenue in USD generated from credit card swipes, next of all fees.
+
+      - name: interchange_eligible_spend_dc
+        sql: "{CUBE}.transactions_gross_amount_dc"
+        type: sum
+        title: Interchange Eligible Spend (Debit Card) ($)
+        description: Amount of debit card spend in USD on which interchange revenue can be collected.
+
+      - name: interchange_revenue_dc
+        sql: "{CUBE}.interchange_gross_amount_dc"
+        type: sum
+        title: Interchange Revenue (Debit Card) ($)
+        description: Revenue in USD generated from debit card swipes, next of all fees.
+
+      - name: interchange_revenue_total
+        sql: "COALESCE({CUBE}.interchange_gross_amount_cc, 0) + COALESCE({CUBE}.interchange_gross_amount_dc, 0)"
+        type: sum
+        title: Interchange Revenue (Total) ($)
+        description: Revenue in USD generated from both debit and credit card swipes, next of all fees.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

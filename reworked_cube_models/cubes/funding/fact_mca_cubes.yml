@@ -1,0 +1,187 @@
+cubes:
+  - name: fact_mca_loan_tape
+    sql_table: "METABASE_DB.MART_FUNDING.FACT_MCA_LOAN_TAPE"
+    public: false
+    description: >
+      MART_FUNDING — Periodic snapshot fact. One row per MCA account per snapshot date.
+      Source of truth for MCA delinquency, outstanding balance, and portfolio exposure.
+      IMPORTANT: This table requires INT_MCA_LOAN_TAPE_RECONCILED as an upstream dbt intermediate
+      to resolve source conflicts between CANOPY_LENDING.ACCOUNTS_TABLE (Aurora)
+      and PROD_DB.DATA.LOAN_TAPE (Fivetran LMS) before Gold promotion.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: loan_tape_id
+        sql: "{CUBE}.LOAN_TAPE_ID"
+        type: string
+        primary_key: true
+        title: Loan Tape ID
+        description: Composite primary key (account_id + snap_date).
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: snap_date
+        sql: "{CUBE}.SNAP_DATE"
+        type: time
+        title: Snapshot Date
+        description: Date of this loan tape snapshot.
+
+      - name: delinquency_bin
+        sql: "{CUBE}.DELINQUENCY_BIN"
+        type: string
+        title: Delinquency Bin (MCA)
+        description: >
+          Days-past-due bucket. Pre-computed in dbt using MAX(DPD) per snap_date + account_id:
+          DAYS_PAST_DUE = 0 → 'bucket 0';
+          1–29 → 'bucket 1'; 30–59 → 'bucket 2'; 60–89 → 'bucket 3';
+          90–119 → 'bucket 4'; 120–149 → 'bucket 5'; 150–179 → 'bucket 6';
+          >= 180 → 'bucket 7'.
+
+    measures:
+      - name: outstanding_balance_mca
+        sql: "{CUBE}.PRINCIPAL_BALANCE_OUTSTANDING"
+        type: sum
+        title: MCA Outstanding Balance ($)
+        description: Total outstanding principal balance across the MCA portfolio at the snapshot date.
+
+      - name: credit_limit_mca
+        sql: "{CUBE}.TOTAL_REVOLVING_FUNDS"
+        type: sum
+        title: MCA Exposure / Credit Limit ($)
+        description: Total revolving credit facility size — maximum portfolio exposure.
+
+      - name: charge_off_loss_mca
+        sql: "CASE WHEN {CUBE}.DAYS_PAST_DUE = 180 THEN {CUBE}.PRINCIPAL_BALANCE_OUTSTANDING END"
+        type: sum
+        title: MCA Charge Off Loss — GUCO ($)
+        description: >
+          Total charged-off MCA principal at 180 DPD threshold.
+          GUCO = Gross Unrecovered Charge-Off.
+
+
+  - name: fact_mca_revenue
+    sql_table: "METABASE_DB.MART_FUNDING.FACT_MCA_REVENUE"
+    public: false
+    description: >
+      MART_FUNDING — One row per MCA account per reporting month.
+      Revenue, charge-off, and recovery metrics derived from monthly loan tape snapshots.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        primary_key: true
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: reporting_month
+        sql: "{CUBE}.REPORTING_MONTH"
+        type: time
+        title: Reporting Month
+        description: First day of the reporting month.
+
+    measures:
+      - name: factor_fee_revenue
+        sql: "{CUBE}.FACTOR_FEE_REVENUE"
+        type: sum
+        title: MCA Factor Fee Revenue ($)
+        description: >
+          Revenue from factor charges collected on outstanding MCA balances.
+          Source: PROD_DB.DATA.LOAN_TAPE.TOTAL_FACTOR_FEE_COLLECTED (delta from prior month).
+
+      - name: late_fee_revenue
+        sql: "{CUBE}.LATE_FEE_REVENUE"
+        type: sum
+        title: MCA Late Fee Revenue ($)
+        description: Revenue from late fee charges on delinquent MCA accounts.
+
+      - name: recovery_mca
+        sql: "{CUBE}.RECOVERY"
+        type: sum
+        title: MCA Recovery ($)
+        description: >
+          Amounts recovered from previously charged-off MCA balances
+          (TOTAL_PRINCIPAL_RECOVERED + TOTAL_FACTOR_FEE_RECOVERED).
+
+
+  - name: fact_mca_transactions
+    sql_table: "METABASE_DB.MART_FUNDING.FACT_MCA_TRANSACTIONS"
+    public: false
+    description: >
+      MART_FUNDING — One row per MCA payment event (draw, cash_in, fee).
+      Source for MCA Attach (first draw) and MCA Active (any draw or cash_in in period).
+      Source: PROD_DB.DATA.LENDING_TRANSACTIONS.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: funding_transaction_id
+        sql: "{CUBE}.FUNDING_TRANSACTION_ID"
+        type: string
+        primary_key: true
+        title: MCA Transaction ID
+        description: UUID — primary key for the MCA payment event.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: transaction_at
+        sql: "{CUBE}.TRANSACTION_AT"
+        type: time
+        title: Transaction At
+        description: Timestamp of the MCA draw, repayment, or fee event.
+
+      - name: transaction_type
+        sql: "{CUBE}.TRANSACTION_TYPE"
+        type: string
+        title: Transaction Type
+        description: "draw = advance taken; cash_in = repayment received; fee = fee charge."
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.BUSINESS_SPECIFIC_ORDINAL"
+        type: number
+        title: Business Ordinal
+        description: Sequential rank of this event for the business. 1 = first-ever event.
+
+    measures:
+      - name: mca_attach
+        sql: "CASE WHEN {CUBE}.BUSINESS_SPECIFIC_ORDINAL = 1 AND {CUBE}.TRANSACTION_TYPE = 'draw' THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: MCA Attach (#)
+        description: >
+          Distinct businesses that have ever opened an MCA draw (first draw event).
+          Deduplication: ROW_NUMBER OVER (PARTITION BY BUSINESS_ID ORDER BY TRANSACTION_AT) = 1
+          WHERE TYPE ILIKE 'draw'.
+
+      - name: mca_active
+        sql: "CASE WHEN {CUBE}.TRANSACTION_TYPE IN ('draw', 'cash_in') THEN {CUBE}.BUSINESS_ID END"
+        type: count_distinct
+        title: MCA Active (#)
+        description: >
+          Distinct businesses with any draw or cash_in (repayment) event in the period.
+          Indicates active MCA portfolio engagement.
+
+      - name: payments_made_mca
+        sql: "CASE WHEN {CUBE}.TRANSACTION_TYPE = 'cash_in' THEN {CUBE}.AMOUNT END"
+        type: sum
+        title: MCA Payments Made ($)
+        description: Total dollar value of MCA repayments received in the period.

@@ -1,0 +1,58 @@
+cubes:
+  - name: funding_activity
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_FUNDING_ACTIVITY"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: funding_transaction_id
+        sql: "{CUBE}.funding_transaction_id"
+        type: string
+        primary_key: true
+        title: Funding Transaction ID
+        description: Unique identifier for the funding activity record
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: funding_transaction_at
+        sql: "{CUBE}.funding_transaction_at"
+        type: time
+        title: Funding Transaction At
+        description: Timestamp when the funding transaction occurred
+
+      - name: transaction_type
+        sql: "{CUBE}.transaction_type"
+        type: string
+        title: Transaction Type
+        description: Type of MCA transaction (cash_in or draw)
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.business_specific_ordinal"
+        type: number
+        title: Business Specific Ordinal
+        description: Sequential number of MCA transactions for each business
+
+    measures:
+      - name: mca_attach
+        sql: "CASE WHEN {CUBE}.business_specific_ordinal = 1 AND {CUBE}.transaction_type = 'draw' THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: MCA Attach (#)
+        description: Count of distinct businesses that had their first MCA draw transaction in a given time period.
+
+      - name: mca_active
+        sql: "{CUBE}.business_id"
+        type: count_distinct
+        title: MCA Active (#)
+        description: Count of distinct businesses that had any MCA transaction in a given time period.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

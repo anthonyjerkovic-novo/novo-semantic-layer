@@ -1,0 +1,24 @@
+views:
+  - name: vw_express_ach_activity
+    
+    cubes:
+
+      - join_path: express_ach_activity
+        prefix: false
+        includes:
+          # dimensions
+          - transaction_month
+          # measures
+          - express_ach_attach
+          - express_ach_active
+
+      - join_path: express_ach_activity.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

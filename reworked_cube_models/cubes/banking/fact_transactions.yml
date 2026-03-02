@@ -1,0 +1,84 @@
+cubes:
+  - name: fact_transactions
+    sql_table: "METABASE_DB.MART_BANKING.FACT_TRANSACTIONS"
+    public: false
+    description: >
+      MART_BANKING — Novo checking account general ledger. One row per transaction across all rails.
+      This is the core money-movement fact table. Rail-specific detail (ACH, wires, mRDC, card)
+      is in separate fact tables that join here via TRANSACTION_ID.
+
+    joins:
+      - name: dim_businesses
+        sql: "{CUBE}.BUSINESS_ID = {dim_businesses}.BUSINESS_ID"
+        relationship: many_to_one
+
+    dimensions:
+      - name: transaction_id
+        sql: "{CUBE}.TRANSACTION_ID"
+        type: string
+        primary_key: true
+        title: Transaction ID
+        description: UUID — primary key for the transaction.
+
+      - name: business_id
+        sql: "{CUBE}.BUSINESS_ID"
+        type: string
+        title: Business ID
+        description: FK to CONFORMED.DIM_BUSINESSES.
+
+      - name: transaction_date
+        sql: "{CUBE}.TRANSACTION_DATE"
+        type: time
+        title: Transaction Date
+        description: Date the transaction was initiated.
+
+      - name: credit_or_debit
+        sql: "{CUBE}.CREDIT_OR_DEBIT"
+        type: string
+        title: Transaction Type
+        description: "credit = inbound (money in), debit = outbound (money out)."
+
+      - name: derived_medium
+        sql: "{CUBE}.DERIVED_MEDIUM"
+        type: string
+        title: Transaction Medium
+        description: >
+          Standardized payment rail: ach_push, ach_pull, express_ach, domestic_wire,
+          debit_card, credit_card, mrdc, check, internal_transfer, atm.
+
+      - name: origination_type
+        sql: "CASE WHEN {CUBE}.MEDIUM ILIKE '%External%' THEN 'receipt' ELSE 'origination' END"
+        type: string
+        title: Origination / Receipt
+        description: Whether the transaction was originated within Novo or received from an external account.
+
+      - name: transaction_status
+        sql: "{CUBE}.TRANSACTION_STATUS"
+        type: string
+        title: Transaction Status
+        description: "pending, settled, returned, failed."
+
+      - name: transaction_at
+        sql: "{CUBE}.TRANSACTION_AT"
+        type: time
+        title: Transaction At
+        description: Full timestamp of the transaction.
+
+      - name: description
+        sql: "{CUBE}.DESCRIPTION"
+        type: string
+        title: Transaction Description
+        description: Raw transaction description text.
+
+    measures:
+      - name: gross_transactions
+        sql: "{CUBE}.TRANSACTION_ID"
+        type: count_distinct
+        title: Gross Transactions (#)
+        description: Count of all transaction events across all rails on the Novo checking account.
+
+      - name: gross_volume
+        sql: "ABS({CUBE}.TRANSACTION_AMOUNT)"
+        type: sum
+        title: Gross Transaction Volume ($)
+        description: Sum of absolute transaction amounts — total dollar flow regardless of direction.

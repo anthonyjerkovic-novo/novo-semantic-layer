@@ -1,0 +1,58 @@
+cubes:
+  - name: integrations_activity
+    sql_table: "DEV_DB.DEV_ANWAR.FACT_INTEGRATIONS_ACTIVITY"
+    public: false
+
+    joins:
+      - name: businesses
+        sql: "{CUBE}.business_id = {businesses}.business_id"
+        relationship: many_to_one
+
+    dimensions:
+      - name: integration_id
+        sql: "{CUBE}.integration_id"
+        type: string
+        primary_key: true
+        title: Integration ID
+        description: Unique identifier for the integration activity record
+
+      - name: business_id
+        sql: "{CUBE}.business_id"
+        type: string
+        title: Business ID
+        description: Unique identifier for the business
+
+      - name: integration_created_at
+        sql: "{CUBE}.integration_created_at"
+        type: time
+        title: Integration Created At
+        description: Timestamp when the integration was created
+
+      - name: tool_name
+        sql: "{CUBE}.tool_name"
+        type: string
+        title: Tool Name
+        description: Name of the integrated tool
+
+      - name: business_specific_ordinal
+        sql: "{CUBE}.business_specific_ordinal"
+        type: number
+        title: Business Specific Ordinal
+        description: Sequential number of integrations for each business
+
+    measures:
+      - name: integrations_attach
+        sql: "CASE WHEN {CUBE}.business_specific_ordinal = 1 THEN {CUBE}.business_id END"
+        type: count_distinct
+        title: Integrations Attach (#)
+        description: Count of distinct businesses that created their first integration connection in a given time period.
+
+      - name: integrations_active
+        sql: "{CUBE}.business_id"
+        type: count_distinct
+        title: Integrations Active (#)
+        description: Count of distinct businesses that created any integration connection in a given time period.
+
+    pre_aggregations:
+      # Pre-aggregation definitions can be added here for performance optimization
+      # Learn more: https://cube.dev/docs/caching/pre-aggregations/getting-started

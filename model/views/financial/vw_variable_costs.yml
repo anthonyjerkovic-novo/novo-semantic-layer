@@ -1,0 +1,27 @@
+views:
+  - name: vw_variable_costs
+    
+    cubes:
+
+      - join_path: variable_costs
+        prefix: false
+        includes:
+          # dimensions
+          - reporting_month
+          # measures
+          - cost_to_open_cogs
+          - cost_to_run_cogs
+          - onboarding_costs
+          - interchange_expenses_cogs
+          - atm_reimbursement
+
+      - join_path: variable_costs.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure

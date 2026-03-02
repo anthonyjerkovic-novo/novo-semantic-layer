@@ -1,0 +1,23 @@
+views:
+  - name: vw_credit_card_requests
+    
+    cubes:
+
+      - join_path: credit_card_requests
+        prefix: false
+        includes:
+          # dimensions
+          - credit_card_requested_at
+          # measures
+          - credit_card_attach
+
+      - join_path: credit_card_requests.businesses
+        prefix: false
+        includes:
+          # Dimensions
+          - opened_account_cohort
+          - business_type
+          - business_industry_category
+          - b2b_services_flag
+          - age_of_business
+          - tenure
